@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { Poll } from "../domain/Poll";
 import { trackUserActivity } from "../services/browserMonitoringService";
+import { useResponsive } from "../hooks/useResponsive";
 import { theme } from "../theme/theme";
 import { getCurrentStandings } from "../services/pollService";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +15,7 @@ type PollCardEditProps = {
 
 export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps) {
     const navigate = useNavigate();
+    const { isMobile } = useResponsive();
     const poll = polls.find((currentPoll) => currentPoll.id === pollId);
 
     const [editedTitle, setEditedTitle] = useState(poll?.title ?? "");
@@ -54,7 +56,7 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                 width: "100%",
                 backgroundColor: "#C4DBD5",
                 borderRadius: "20px",
-                padding: "24px",
+                padding: isMobile ? "18px" : "24px",
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
@@ -87,7 +89,7 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "minmax(0, 1fr) 220px",
+                        gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) 220px",
                         gap: "16px",
                         alignItems: "stretch",
                     }}
@@ -134,7 +136,7 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                        gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, minmax(0, 1fr))",
                         gap: "16px",
                     }}
                 >
@@ -155,16 +157,17 @@ function FieldError({ message }: { message: string }) {
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
+    const { isMobile } = useResponsive();
     return (
         <div
             style={{
                 display: "grid",
-                gridTemplateColumns: "130px 1fr",
+                gridTemplateColumns: isMobile ? "1fr" : "130px 1fr",
                 alignItems: "start",
                 gap: "14px",
             }}
         >
-            <label style={{ color: "#1F3D3A", fontWeight: 700, paddingTop: "12px" }}>{label}</label>
+            <label style={{ color: "#1F3D3A", fontWeight: 700, paddingTop: isMobile ? 0 : "12px" }}>{label}</label>
             <div>{children}</div>
         </div>
     );
@@ -186,6 +189,7 @@ function DetailLabel({ label, value }: { label: string; value: string }) {
 }
 
 const PollResults = ({ poll }: { poll: Poll }) => {
+    const { isMobile } = useResponsive();
     // 1. Setup Pagination State
     const [currentPage, setCurrentPage] = useState(0);
     const ITEMS_PER_PAGE = 4; // 2x2 grid = 4 items per page
@@ -207,7 +211,7 @@ const PollResults = ({ poll }: { poll: Poll }) => {
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr", // Creates two equal columns
+                    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
                     gap: "12px",
                     minHeight: "60px" // Optional: prevents the UI from jumping if the last page has fewer items
                 }}
@@ -221,7 +225,7 @@ const PollResults = ({ poll }: { poll: Poll }) => {
 
             {/* 4. Pagination Controls (Only show if there's more than 1 page) */}
             {totalPages > 1 && (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", gap: "12px", flexWrap: "wrap" }}>
                     <button
                         onClick={() => setCurrentPage(p => p - 1)}
                         disabled={currentPage === 0}

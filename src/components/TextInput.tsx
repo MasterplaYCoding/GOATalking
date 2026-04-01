@@ -1,4 +1,5 @@
 import { theme } from "../theme/theme";
+import { useResponsive } from "../hooks/useResponsive";
 
 type TextInputProps = {
     value: string;
@@ -9,15 +10,17 @@ type TextInputProps = {
 };
 
 export function TextInput({ value, onChange, label, type = "text", error }: TextInputProps) {
+    const { isMobile } = useResponsive();
+
     return (
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "6px", margin: "0 auto", boxSizing: "border-box" }}>
             {label && (
-                <div style={{ width: "100%", display: "flex", alignItems: "center", boxSizing: "border-box" }}>
+                <div style={{ width: "100%", display: "flex", alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile && type === "password" ? "column" : "row", gap: isMobile && type === "password" ? "4px" : 0, boxSizing: "border-box" }}>
                 <p style={{ color: "white", fontSize: 14, margin: 0, paddingLeft: 0}}>
                     {label}
                 </p>
                 {type === "password" && (
-                    <p style={{ color: '#47C7AA', fontSize: 12, cursor: "pointer", margin: "0 0 0 auto", paddingRight: 0, textAlign: "right" }}>
+                    <p style={{ color: '#47C7AA', fontSize: 12, cursor: "pointer", margin: isMobile ? 0 : "0 0 0 auto", paddingRight: 0, textAlign: isMobile ? "left" : "right", alignSelf: isMobile ? "flex-start" : "auto" }}>
                         Forgot password?
                     </p>
                 )}

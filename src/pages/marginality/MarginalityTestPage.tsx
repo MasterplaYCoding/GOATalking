@@ -13,6 +13,7 @@ import {
   getQuestionOverallAverage,
   getResponsesForTest,
 } from "../../services/marginalityTestService";
+import { useResponsive } from "../../hooks/useResponsive";
 import type { MarginalityDraftState } from "./flowTypes";
 
 type MarginalityQuestionPageProps = {
@@ -65,6 +66,7 @@ function MarginalityQuestionScreen({
   draftState,
 }: MarginalityQuestionScreenProps) {
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
   const existingAnswer = draftState.answers[question.id];
   const [sliderValue, setSliderValue] = useState(existingAnswer ?? 50);
   const [hasVoted, setHasVoted] = useState(typeof existingAnswer === "number");
@@ -135,6 +137,132 @@ function MarginalityQuestionScreen({
       }
     }, 500);
   };
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(to bottom right, #6EC1B8, #2E5652)",
+          padding: "20px 16px 24px",
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}
+      >
+        <div>
+          <p style={{ color: "#DCEFEB", margin: "0 0 8px 0", fontSize: "0.9rem" }}>
+            Question {currentIndex + 1} of {test.questions.length}
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <h1 style={{ fontSize: "2.2rem", margin: 0, fontWeight: 900, lineHeight: 1.05 }}>
+              <span style={{ color: "#4B6BFB" }}>Cold</span>{" "}
+              <span style={{ color: "#102724" }}>or</span>{" "}
+              <span style={{ color: "#FF2A2A" }}>Hot</span>
+              <span style={{ color: "#102724" }}>?</span>
+            </h1>
+            <InfoPopover />
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, position: "static", width: "100%", height: "auto", minHeight: "260px", padding: "24px" }}>
+          <p style={{ fontSize: "1rem", margin: "0 0 12px 0", textAlign: "center", color: "#555" }}>Take:</p>
+          <h2 style={{ fontSize: "1.45rem", margin: 0, textAlign: "center", lineHeight: 1.35 }}>{question.text}</h2>
+        </div>
+
+        {hasVoted && (
+          <p style={{ color: "#EAF6F2", fontSize: "0.95rem", margin: 0, lineHeight: 1.45 }}>
+            {summary}
+          </p>
+        )}
+
+        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "18px", padding: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "1.2rem" }}>
+            <span role="img" aria-label="cold face">🥶</span>
+            <span role="img" aria-label="hot face">🥵</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            className="custom-slider"
+            value={sliderValue}
+            onChange={(event) => {
+              setSliderValue(Number(event.target.value));
+              if (!hasVoted) {
+                setHasVoted(true);
+              }
+            }}
+          />
+          <div style={{ marginTop: "12px", color: "#F3FBF8", fontSize: "0.95rem", textAlign: "center" }}>{sliderValue}%</div>
+        </div>
+
+        <button
+          onClick={() => setShowStats((current) => !current)}
+          disabled={!hasVoted}
+          style={{
+            backgroundColor: "#7BE4C6",
+            color: "#1F3D3A",
+            border: "none",
+            padding: "12px 18px",
+            borderRadius: "20px",
+            fontWeight: 700,
+            cursor: hasVoted ? "pointer" : "not-allowed",
+            opacity: hasVoted ? 1 : 0.45,
+          }}
+        >
+          {!hasVoted ? "Vote to see stats" : showStats ? "Hide stats" : "See stats"}
+        </button>
+
+        {showStats && (
+          <div style={{ ...statsCardStyle, position: "static", width: "100%", height: "auto", marginTop: 0, left: "auto", transform: "none", opacity: 1 }}>
+            <p style={statsTextStyle}>
+              You answered <strong>{sliderValue}%</strong>, which means you <strong>{agreementTone(sliderValue)}</strong> this take.
+            </p>
+            <p style={statsTextStyle}>
+              The current overall average is <strong>{formatPercent(overallAverage)}</strong>, so you are{" "}
+              <strong>{formatSignedDistance(sliderValue - overallAverage)}</strong> away from the crowd on this question.
+            </p>
+            <Divider />
+            <p style={statsTextStyle}>
+              Your generation is <strong>{ageInsights.currentGroupLabel}</strong> at <strong>{formatPercent(ageInsights.currentGroupAverage)}</strong>.
+            </p>
+            <p style={statsTextStyle}>
+              You are closest to <strong>{ageInsights.closestGroupLabel}</strong> and furthest from <strong>{ageInsights.furthestGroupLabel}</strong>.
+            </p>
+            <p style={statsTextStyle}>{ageInsights.groupsLine}</p>
+            <Divider />
+            <p style={statsTextStyle}>{countryInsight}</p>
+            <p style={statsTextStyle}>{watchingInsight}</p>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            onClick={() => navigate("/marginality-test")}
+            style={{ ...actionButtonStyle, flex: 1, background: "transparent", border: "2px solid rgba(255,255,255,0.25)", color: "#E0F2F1" }}
+          >
+            Quit
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={isAnimatingOut || !hasVoted}
+            style={{
+              ...actionButtonStyle,
+              flex: 1,
+              background: "#5E3B68",
+              color: "white",
+              opacity: !hasVoted || isAnimatingOut ? 0.5 : 1,
+              cursor: !hasVoted || isAnimatingOut ? "not-allowed" : "pointer",
+            }}
+          >
+            {isLastQuestion ? "Finish Test" : "Next"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

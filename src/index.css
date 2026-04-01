@@ -4,11 +4,28 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: linear-gradient(to bottom, #79dbd6 0%, #315b58 100%);
+  background: #315b58;
   caret-color: transparent;
   font-family: "Inika", serif;
+  overflow-x: hidden;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, #79dbd6 0%, #4d8e89 45%, #315b58 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 .inika-bold {
   font-weight: 700;
+}
+
+* {
+  box-sizing: border-box;
 }

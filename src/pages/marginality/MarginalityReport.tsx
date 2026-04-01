@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef} from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import youImage from "../../assets/you.png";
 import {
@@ -8,6 +8,7 @@ import {
   type MarginalityTestResponse,
 } from "../../domain/MarginalityTest";
 import { createMarginalityResponse, getDistanceFromOtherGroups } from "../../services/marginalityTestService";
+import { useResponsive } from "../../hooks/useResponsive";
 import type { MarginalityDraftState } from "./flowTypes";
 
 type MarginalityReportProps = {
@@ -25,6 +26,7 @@ export function MarginalityReport({
 }: MarginalityReportProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isMobile, isTablet } = useResponsive();
   const { testId } = useParams<{ testId: string }>();
   const test = useMemo(() => tests.find((currentTest) => currentTest.id === testId), [testId, tests]);
   const draftState = location.state as MarginalityDraftState | undefined;
@@ -87,17 +89,16 @@ export function MarginalityReport({
     <div
       style={{
         minHeight: "100vh",
-        padding: "40px 24px",
+        padding: isMobile ? "20px 16px 96px" : isTablet ? "28px 20px 36px" : "40px 24px",
         boxSizing: "border-box",
         display: "flex",
         justifyContent: "center",
-
       }}
     >
       <div
         style={{
           backgroundColor: "#F0DDB3",
-          padding: "40px",
+          padding: isMobile ? "24px 18px" : isTablet ? "32px 24px" : "40px",
           borderRadius: "24px",
           border: "1px solid black",
           maxWidth: "860px",
@@ -106,21 +107,26 @@ export function MarginalityReport({
           flexDirection: "column",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: isMobile ? "18px" : "24px",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <h2 style={{ color: "black", marginTop: 0, fontSize: "2rem", marginBottom: "8px" }}>Final Report</h2>
-          <p style={{ color: "black", margin: 0, fontSize: "1rem" }}>{test.title}</p>
+        <div style={{ textAlign: "center", marginBottom: isMobile ? "8px" : "12px" }}>
+          <h2 style={{ color: "black", marginTop: 0, fontSize: isMobile ? "1.6rem" : "2rem", marginBottom: "8px" }}>
+            Final Report
+          </h2>
+          <p style={{ color: "black", margin: 0, fontSize: isMobile ? "0.95rem" : "1rem", lineHeight: 1.4 }}>
+            {test.title}
+          </p>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "26px" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: isMobile ? "6px" : "10px", width: "100%" }}>
           <div
             style={{
-              width: "100%",          
-              maxWidth: "250px",     
-              minWidth: "120px",      
-              aspectRatio: "1 / 1",   
-              containerType: "inline-size", 
+              width: "100%",
+              maxWidth: isMobile ? "210px" : "250px",
+              minWidth: "120px",
+              aspectRatio: "1 / 1",
+              containerType: "inline-size",
               borderRadius: "50%",
               background: `conic-gradient(#2F6F67 ${overallMarginality}%, rgba(0,0,0,0.08) ${overallMarginality}%)`,
               display: "flex",
@@ -156,11 +162,14 @@ export function MarginalityReport({
         <div
           style={{
             display: "flex",
-            gap: "20px",
+            gap: isMobile ? "14px" : "20px",
             alignItems: "flex-start",
             justifyContent: "center",
-            flexWrap: "wrap",
-            marginBottom: "24px",
+            flexWrap: isMobile ? "nowrap" : "wrap",
+            overflowX: isMobile ? "auto" : "visible",
+            width: "100%",
+            paddingBottom: isMobile ? "8px" : 0,
+            marginBottom: isMobile ? "4px" : "8px",
           }}
         >
           <ComparisonTile imageSrc={youImage} label="You" value={`${overallMarginality.toFixed(1)}%`} />
@@ -174,9 +183,19 @@ export function MarginalityReport({
           ))}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "row", width: "100%", justifyContent: "space-around", marginBottom: "28px" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            gap: isMobile ? "10px" : "18px",
+            width: "100%",
+            justifyContent: "space-around",
+            alignItems: isMobile ? "flex-start" : "center",
+            marginBottom: isMobile ? "8px" : "12px",
+          }}
+        >
           {categoryLabels.map((label) => (
-            <p key={label} style={{ margin: 0, color: "black", fontSize: "0.98rem" }}>
+            <p key={label} style={{ margin: 0, color: "black", fontSize: isMobile ? "0.92rem" : "0.98rem", lineHeight: 1.4 }}>
               {label}
             </p>
           ))}
@@ -185,8 +204,8 @@ export function MarginalityReport({
         <button
           onClick={() => navigate("/marginality-test")}
           style={{
-            width: "20%",
-            minWidth: "180px",
+            width: isMobile ? "100%" : "20%",
+            minWidth: isMobile ? "auto" : "180px",
             background: "#2F6F67",
             color: "white",
             border: "none",
@@ -206,11 +225,11 @@ export function MarginalityReport({
 
 function ComparisonTile({ imageSrc, label, value }: { imageSrc: string; label: string; value: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", color: "black" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", color: "black", minWidth: "88px", flexShrink: 0 }}>
       <div
         style={{
-          width: "130px",
-          height: "130px",
+          width: "96px",
+          height: "96px",
           margin: "0 auto 10px",
           borderRadius: "50%",
           overflow: "hidden",
@@ -223,10 +242,8 @@ function ComparisonTile({ imageSrc, label, value }: { imageSrc: string; label: s
           <img src={imageSrc} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : null}
       </div>
-      <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{label}</div>
-      {label !== "You" && (
-        <div style={{ marginTop: "4px" }}>{value}</div>
-      )}
+      <div style={{ fontWeight: 700, fontSize: "0.9rem", textAlign: "center" }}>{label}</div>
+      <div style={{ marginTop: "4px" }}>{value}</div>
     </div>
   );
 }

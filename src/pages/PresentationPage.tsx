@@ -1,4 +1,5 @@
 import { theme } from "../theme/theme";
+import { useResponsive } from "../hooks/useResponsive";
 
 type PresentationPageProps = {
   onLogIn: () => void;
@@ -6,25 +7,26 @@ type PresentationPageProps = {
 };
 
 export function PresentationPage({ onLogIn, onSignUp }: PresentationPageProps) {
+  const { isMobile } = useResponsive();
   return (
     <div
       style={{
         minHeight: "100vh",
-        padding: "48px 24px",
+        padding: isMobile ? "28px 16px" : "48px 24px",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        gap: "30px",
+        gap: isMobile ? "22px" : "30px",
       }}
     >
-      <img src="/logo.png" alt="GOATalking Logo" style={{ width: "200px", margin: "20px 0" }} />
-      <h1 style={{ color: "white", margin: 0 }}>GOATalking</h1>
-      <p style={{ width: "100%", maxWidth: "720px", fontSize: 20, textAlign: "center", color: "white", margin: 0 }}>
+      <img src="/logo.png" alt="GOATalking Logo" style={{ width: isMobile ? "150px" : "200px", margin: "20px 0" }} />
+      <h1 style={{ color: "white", margin: 0, fontSize: isMobile ? "2rem" : undefined }}>GOATalking</h1>
+      <p style={{ width: "100%", maxWidth: "720px", fontSize: isMobile ? 16 : 20, textAlign: "center", color: "white", margin: 0 }}>
         Everything is rankable.
       </p>
-      <p style={{ width: "100%", maxWidth: "720px", fontSize: 20, textAlign: "center", color: "white", margin: 0 }}>
+      <p style={{ width: "100%", maxWidth: "720px", fontSize: isMobile ? 16 : 20, textAlign: "center", color: "white", margin: 0, lineHeight: 1.45 }}>
         GOATalking is a discussion forum centered around ranking and debating the best of anything, from serious topics
         like the greatest football player of all time to random ones like the best day of the week.
       </p>

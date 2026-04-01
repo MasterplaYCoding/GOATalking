@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TextInput } from "../../components/TextInput";
+import { useResponsive } from "../../hooks/useResponsive";
 import { trackUserActivity } from "../../services/browserMonitoringService";
 import { hasValidationErrors, validateSignUpInput } from "../../services/validationService";
 import { theme } from "../../theme/theme";
@@ -10,6 +11,7 @@ type SignUpPageProps = {
 };
 
 export function SignUpPage({ onSubmit, onSwitchToLogIn }: SignUpPageProps) {
+  const { isMobile } = useResponsive();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [mail, setMail] = useState("");
@@ -41,11 +43,11 @@ export function SignUpPage({ onSubmit, onSwitchToLogIn }: SignUpPageProps) {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        gap: "40px",
+        gap: isMobile ? "24px" : "40px",
       }}
     >
-      <img src="/logo.png" alt="GOATalking Logo" style={{ width: "150px", margin: "20px 0" }} />
-      <h1 style={{ color: "white", margin: 0 }}>Register Now</h1>
+      <img src="/logo.png" alt="GOATalking Logo" style={{ width: isMobile ? "120px" : "150px", margin: "20px 0" }} />
+      <h1 style={{ color: "white", margin: 0, fontSize: isMobile ? "2rem" : undefined }}>Register Now</h1>
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "20px" }}>
         <TextInput value={username} onChange={setUsername} label="Username" error={errors.username} />
         <TextInput value={mail} onChange={setMail} label="Email" error={errors.email} />

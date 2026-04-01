@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Poll } from "../domain/Poll";
 import type { UserVotes } from "../domain/User"; // 1. IMPORT USERVOTES
+import { useResponsive } from "../hooks/useResponsive";
 import { UserPollsTable } from "../components/UserPollsTable";
 
 // 2. ADD THE MISSING PROPS HERE
@@ -111,6 +112,7 @@ export function UserStatsPage({
     onRunCrudDemo,
     isCrudDemoRunning,
 }: UserStatsPageProps) {
+    const { isMobile, isTablet } = useResponsive();
     
     // 4. FILTER SO THE DASHBOARD ONLY SHOWS THE CURRENT USER'S POLLS
     const userPolls = useMemo(() => {
@@ -174,16 +176,16 @@ export function UserStatsPage({
         <div
             style={{
                 minHeight: "100vh",
-                padding: "40px 32px",
+                padding: isMobile ? "20px 16px 24px" : "40px 32px",
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
-                gap: "32px",
+                gap: isMobile ? "20px" : "32px",
             }}
         >
             <div style={{ textAlign: "center" }}>
-                <h1 style={{ color: "white", margin: 0, fontSize: "2.5rem" }}>Creator Dashboard</h1>
-                <p style={{ color: "white", margin: "8px 0 0 0", fontSize: "1.1rem" }}>
+                <h1 style={{ color: "white", margin: 0, fontSize: isMobile ? "2rem" : "2.5rem" }}>Creator Dashboard</h1>
+                <p style={{ color: "white", margin: "8px 0 0 0", fontSize: isMobile ? "0.95rem" : "1.1rem" }}>
                     Track the performance and engagement of your polls.
                 </p>
                 <button
@@ -207,8 +209,8 @@ export function UserStatsPage({
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 2fr 1fr",
-                    gap: "24px",
+                    gridTemplateColumns: isMobile ? "1fr" : isTablet ? "1fr" : "1fr 2fr 1fr",
+                    gap: isMobile ? "16px" : "24px",
                     alignItems: "start",
                     maxWidth: "1600px",
                     margin: "0 auto",
@@ -216,7 +218,7 @@ export function UserStatsPage({
                 }}
             >
                 {/* LEFT COLUMN: Interaction Chart */}
-                <div style={{ position: "sticky", top: "40px" }}>
+                <div style={{ position: isTablet ? "static" : "sticky", top: "40px", order: isTablet ? 1 : 0 }}>
                     <PieChartCard
                         title="Poll Interactions"
                         description="Total votes per poll"
@@ -230,9 +232,10 @@ export function UserStatsPage({
                         backgroundColor: "rgba(255, 255, 255, 0.05)",
                         backdropFilter: "blur(10px)",
                         borderRadius: "20px",
-                        padding: "24px",
+                        padding: isMobile ? "16px" : "24px",
                         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
                         border: "1px solid rgba(255, 255, 255, 0.1)",
+                        order: 0,
                     }}
                 >
                     <h2 style={{ color: "white", marginTop: 0, marginBottom: "24px" }}>
@@ -250,7 +253,7 @@ export function UserStatsPage({
                 </div>
 
                 {/* RIGHT COLUMN: Dominance Chart */}
-                <div style={{ position: "sticky", top: "40px" }}>
+                <div style={{ position: isTablet ? "static" : "sticky", top: "40px", order: isTablet ? 2 : 0 }}>
                     <PieChartCard
                         title="Frontrunner Dominance"
                         description="Vote % held by the leading option"

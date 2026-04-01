@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TextInput } from "../../components/TextInput";
+import { useResponsive } from "../../hooks/useResponsive";
 import { trackUserActivity } from "../../services/browserMonitoringService";
 import { hasValidationErrors, validateLogInInput } from "../../services/validationService";
 import { theme } from "../../theme/theme";
@@ -10,6 +11,7 @@ type LogInPageProps = {
 };
 
 export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
+  const { isMobile } = useResponsive();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -36,12 +38,12 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        gap: "40px",
+        gap: isMobile ? "24px" : "40px",
       }}
     >
-      <img src="/logo.png" alt="GOATalking Logo" style={{ width: "150px", margin: "20px 0" }} />
-      <h1 style={{ color: "white", margin: 0 }}>Authentication</h1>
-      <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "40px" }}>
+      <img src="/logo.png" alt="GOATalking Logo" style={{ width: isMobile ? "120px" : "150px", margin: "20px 0" }} />
+      <h1 style={{ color: "white", margin: 0, fontSize: isMobile ? "2rem" : undefined }}>Authentication</h1>
+      <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: isMobile ? "24px" : "40px" }}>
         <TextInput value={email} onChange={setEmail} label="Email" error={errors.email} />
         <TextInput value={password} onChange={setPassword} label="Password" type="password" error={errors.password} />
       </div>

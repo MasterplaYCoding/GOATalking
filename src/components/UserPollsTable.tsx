@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import type { Poll } from "../domain/Poll";
 import { getPreference, setPreference } from "../services/browserMonitoringService";
 import type { UserVotes } from "../domain/User";
+import { useResponsive } from "../hooks/useResponsive";
 import { theme } from "../theme/theme";
 import { PollCard } from "./PollCard";
 
@@ -65,11 +66,13 @@ const getGradientColor = (index: number, maxIndex: number) => {
 
 export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId, userVotes, onVote }: UserPollsTableProps) {
   const [viewMode, setViewMode] = useState<"table" | "grid">(() => getPreference("dashboardViewMode") ?? "table");
+  const { isMobile } = useResponsive();
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedPollId, setSelectedPollId] = useState<string | null>(null);
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
   
-  const ITEMS_PER_PAGE = viewMode === "table" ? 4 : 6;
+  const effectiveViewMode = isMobile ? "grid" : viewMode;
+  const ITEMS_PER_PAGE = effectiveViewMode === "table" ? 4 : isMobile ? 4 : 6;
   const totalPages = Math.ceil(polls.length / ITEMS_PER_PAGE);
   const safeCurrentPage = Math.min(currentPage, Math.max(0, totalPages - 1));
 
@@ -111,7 +114,7 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
         </div>
       ) : (
         <>
-          {viewMode === "table" ? (
+          {effectiveViewMode === "table" ? (
             // ================== TABLE VIEW ==================
             <div
               style={{
@@ -238,7 +241,7 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
               className="hide-scroll"
               style={{ 
                 display: "grid", 
-                gridTemplateColumns: "repeat(3, 1fr)", 
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", 
                 gap: "24px", 
                 flex: 1,
                 minHeight: 0, // CRITICAL: Allows flex child to not overflow parent
@@ -288,16 +291,16 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
       <div 
         style={{ 
           display: "grid", 
-          gridTemplateColumns: "1fr auto 1fr", 
+          gridTemplateColumns: isMobile ? "1fr" : "1fr auto 1fr", 
           alignItems: "center", 
-          gap: "32px", // Added guaranteed spacing between columns!
+          gap: isMobile ? "16px" : "32px",
           padding: "0 4px", 
           flexShrink: 0 
         }}
       >
         
         {/* Left: Action Buttons */}
-        <div style={{ display: "flex", gap: "12px", justifySelf: "flex-start" }}>
+        <div style={{ display: "flex", gap: "12px", justifySelf: isMobile ? "stretch" : "flex-start", flexWrap: "wrap" }}>
           <ActionButton icon="add" text="Add" onClick={onAdd} />
           <ActionButton 
             icon="edit" 

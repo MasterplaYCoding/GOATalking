@@ -6,6 +6,7 @@ import type {
   MarginalityTest,
 } from "../../domain/MarginalityTest";
 import { trackUserActivity } from "../../services/browserMonitoringService";
+import { useResponsive } from "../../hooks/useResponsive";
 import { getAgeGroupFromAge } from "../../services/marginalityTestService";
 import { hasValidationErrors, validateDynamicProfileValues } from "../../services/validationService";
 import { theme } from "../../theme/theme";
@@ -17,6 +18,7 @@ type TakeMarginalityTestProps = {
 
 export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
   const { testId } = useParams<{ testId: string }>();
   const test = useMemo(() => tests.find((currentTest) => currentTest.id === testId), [testId, tests]);
   const [profileValues, setProfileValues] = useState<Record<string, string>>({});
@@ -54,11 +56,28 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "40px 24px", boxSizing: "border-box", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: "700px", background: "#F0DDB3", borderRadius: "24px", padding: "32px", border: "1px solid black" }}>
-        <h1 style={{ color: "black", marginTop: 0 }}>{test.title}</h1>
-        <p style={{ color: "black", lineHeight: 1.5 }}>{test.description}</p>
-        <p style={{ color: "black", marginBottom: "28px" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        padding: isMobile ? "20px 16px 96px" : "40px 24px",
+        boxSizing: "border-box",
+        display: "flex",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "700px",
+          background: "#F0DDB3",
+          borderRadius: "24px",
+          padding: isMobile ? "22px 18px" : "32px",
+          border: "1px solid black",
+        }}
+      >
+        <h1 style={{ color: "black", marginTop: 0, fontSize: isMobile ? "1.8rem" : "2.2rem", lineHeight: 1.15 }}>{test.title}</h1>
+        <p style={{ color: "black", lineHeight: 1.5, fontSize: isMobile ? "0.95rem" : "1rem" }}>{test.description}</p>
+        <p style={{ color: "black", marginBottom: "28px", fontSize: isMobile ? "0.95rem" : "1rem", lineHeight: 1.45 }}>
           Before the questions, tell us a bit about the categories this test compares against.
         </p>
 
@@ -80,11 +99,11 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
           ))}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "32px" }}>
-          <button onClick={() => navigate("/marginality-test")} style={secondaryButtonStyle}>
+        <div style={{ display: "flex", justifyContent: "space-between", flexDirection: isMobile ? "column-reverse" : "row", gap: "12px", marginTop: "32px" }}>
+          <button onClick={() => navigate("/marginality-test")} style={{ ...secondaryButtonStyle, width: isMobile ? "100%" : "auto" }}>
             Back to Tests
           </button>
-          <button onClick={handleStart} style={primaryButtonStyle}>
+          <button onClick={handleStart} style={{ ...primaryButtonStyle, width: isMobile ? "100%" : "auto" }}>
             Start Test
           </button>
         </div>

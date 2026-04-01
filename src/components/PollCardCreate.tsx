@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { trackUserActivity } from "../services/browserMonitoringService";
+import { useResponsive } from "../hooks/useResponsive";
 import { hasValidationErrors, validatePollInput } from "../services/validationService";
 import { theme } from "../theme/theme";
 
@@ -15,6 +16,7 @@ type PollCardCreateProps = {
 };
 
 export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
+    const { isMobile } = useResponsive();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
@@ -67,7 +69,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                 maxWidth: "600px",       // Stops it from getting too wide
                 backgroundColor: "#C4DBD5",
                 borderRadius: "20px",
-                padding: "32px",
+                padding: isMobile ? "20px" : "32px",
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
@@ -101,7 +103,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "minmax(0, 1fr) 180px",
+                        gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) 180px",
                         gap: "16px",
                         alignItems: "stretch",
                     }}
@@ -142,7 +144,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                 <h3 style={{ margin: 0, color: "#1F3D3A" }}>Poll Options</h3>
                 
                 {options.map((opt, index) => (
-                    <div key={index} style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    <div key={index} style={{ display: "flex", gap: "12px", alignItems: isMobile ? "stretch" : "center", flexDirection: isMobile ? "column" : "row" }}>
                         <input
                             value={opt}
                             onChange={(e) => handleOptionChange(index, e.target.value)}
@@ -194,8 +196,8 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                 </button>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px" }}>
-                <button onClick={handleSave} style={primaryButtonStyle}>
+            <div style={{ display: "flex", justifyContent: isMobile ? "stretch" : "flex-end", marginTop: "16px" }}>
+                <button onClick={handleSave} style={{ ...primaryButtonStyle, width: isMobile ? "100%" : undefined }}>
                     Create Poll
                 </button>
             </div>
@@ -208,9 +210,10 @@ function FieldError({ message }: { message: string }) {
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
+    const { isMobile } = useResponsive();
     return (
-        <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", alignItems: "start", gap: "14px" }}>
-            <label style={{ color: "#1F3D3A", fontWeight: 700, paddingTop: "12px" }}>{label}</label>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "100px 1fr", alignItems: "start", gap: "14px" }}>
+            <label style={{ color: "#1F3D3A", fontWeight: 700, paddingTop: isMobile ? 0 : "12px" }}>{label}</label>
             <div>{children}</div>
         </div>
     );
