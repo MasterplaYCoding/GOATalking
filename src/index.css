@@ -1,0 +1,14 @@
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(to bottom, #79dbd6 0%, #315b58 100%);
+  caret-color: transparent;
+  font-family: "Inika", serif;
+}
+
+.inika-bold {
+  font-weight: 700;
+}
