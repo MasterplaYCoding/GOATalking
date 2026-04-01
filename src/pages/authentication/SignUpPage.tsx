@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { TextInput } from "../../components/TextInput";
+import { trackUserActivity } from "../../services/browserMonitoringService";
+import { hasValidationErrors, validateSignUpInput } from "../../services/validationService";
 import { theme } from "../../theme/theme";
 
 type SignUpPageProps = {
@@ -11,6 +13,23 @@ export function SignUpPage({ onSubmit, onSwitchToLogIn }: SignUpPageProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [mail, setMail] = useState("");
+  const [errors, setErrors] = useState<{ username?: string; email?: string; password?: string }>({});
+
+  const handleSubmit = () => {
+    const nextErrors = validateSignUpInput({
+      username,
+      email: mail,
+      password,
+    });
+    setErrors(nextErrors);
+
+    if (hasValidationErrors(nextErrors)) {
+      return;
+    }
+
+    trackUserActivity("auth", "sign-up-submit");
+    onSubmit();
+  };
 
   return (
     <div
@@ -28,13 +47,13 @@ export function SignUpPage({ onSubmit, onSwitchToLogIn }: SignUpPageProps) {
       <img src="/logo.png" alt="GOATalking Logo" style={{ width: "150px", margin: "20px 0" }} />
       <h1 style={{ color: "white", margin: 0 }}>Register Now</h1>
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "20px" }}>
-        <TextInput value={username} onChange={setUsername} label="Username" />
-        <TextInput value={mail} onChange={setMail} label="Email" />
-        <TextInput value={password} onChange={setPassword} label="Password" type="password" />
+        <TextInput value={username} onChange={setUsername} label="Username" error={errors.username} />
+        <TextInput value={mail} onChange={setMail} label="Email" error={errors.email} />
+        <TextInput value={password} onChange={setPassword} label="Password" type="password" error={errors.password} />
       </div>
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "12px" }}>
         <button
-          onClick={onSubmit}
+          onClick={handleSubmit}
           style={{
             padding: "10px 20px",
             width: "100%",

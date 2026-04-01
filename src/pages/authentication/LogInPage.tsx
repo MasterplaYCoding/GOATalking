@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { TextInput } from "../../components/TextInput";
+import { trackUserActivity } from "../../services/browserMonitoringService";
+import { hasValidationErrors, validateLogInInput } from "../../services/validationService";
 import { theme } from "../../theme/theme";
 
 type LogInPageProps = {
@@ -8,8 +10,21 @@ type LogInPageProps = {
 };
 
 export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  const handleSubmit = () => {
+    const nextErrors = validateLogInInput({ email, password });
+    setErrors(nextErrors);
+
+    if (hasValidationErrors(nextErrors)) {
+      return;
+    }
+
+    trackUserActivity("auth", "log-in-submit");
+    onSubmit();
+  };
 
   return (
     <div
@@ -27,12 +42,12 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
       <img src="/logo.png" alt="GOATalking Logo" style={{ width: "150px", margin: "20px 0" }} />
       <h1 style={{ color: "white", margin: 0 }}>Authentication</h1>
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "40px" }}>
-        <TextInput value={username} onChange={setUsername} label="Email" />
-        <TextInput value={password} onChange={setPassword} label="Password" type="password" />
+        <TextInput value={email} onChange={setEmail} label="Email" error={errors.email} />
+        <TextInput value={password} onChange={setPassword} label="Password" type="password" error={errors.password} />
       </div>
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "12px" }}>
         <button
-          onClick={onSubmit}
+          onClick={handleSubmit}
           style={{
             padding: "10px 20px",
             width: "100%",

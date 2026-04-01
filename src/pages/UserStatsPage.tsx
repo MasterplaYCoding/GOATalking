@@ -12,6 +12,8 @@ type UserStatsPageProps = {
     currentUserId: string;
     userVotes: UserVotes;
     onVote: (pollId: string, optionId: string, userId: string) => void;
+    onRunCrudDemo: () => void;
+    isCrudDemoRunning: boolean;
 };
 
 // --- Our custom Color Palette (Light to Dark) ---
@@ -105,7 +107,9 @@ export function UserStatsPage({
     onDelete,
     currentUserId,
     userVotes,
-    onVote
+    onVote,
+    onRunCrudDemo,
+    isCrudDemoRunning,
 }: UserStatsPageProps) {
     
     // 4. FILTER SO THE DASHBOARD ONLY SHOWS THE CURRENT USER'S POLLS
@@ -182,6 +186,22 @@ export function UserStatsPage({
                 <p style={{ color: "white", margin: "8px 0 0 0", fontSize: "1.1rem" }}>
                     Track the performance and engagement of your polls.
                 </p>
+                <button
+                    onClick={onRunCrudDemo}
+                    disabled={isCrudDemoRunning}
+                    style={{
+                        marginTop: "14px",
+                        borderRadius: "999px",
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        background: isCrudDemoRunning ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.08)",
+                        color: "white",
+                        padding: "8px 16px",
+                        fontWeight: 700,
+                        cursor: isCrudDemoRunning ? "not-allowed" : "pointer",
+                    }}
+                >
+                    {isCrudDemoRunning ? "CRUD demo running..." : "Run CRUD demo thread"}
+                </button>
             </div>
 
             <div

@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from "react";
 import type { Poll } from "../domain/Poll";
+import { trackUserActivity } from "../services/browserMonitoringService";
 import { theme } from "../theme/theme";
 import { getCurrentStandings } from "../services/pollService";
 import { useNavigate } from "react-router-dom";
+import { hasValidationErrors, validatePollInput } from "../services/validationService";
 
 type PollCardEditProps = {
     pollId: string;
@@ -17,17 +19,31 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
     const [editedTitle, setEditedTitle] = useState(poll?.title ?? "");
     const [editedDescription, setEditedDescription] = useState(poll?.description ?? "");
     const [editedImageUrl, setEditedImageUrl] = useState(poll?.imageUrl ?? "");
+    const [errors, setErrors] = useState<Partial<Record<"title" | "description" | "imageUrl" | "options", string>>>({});
 
     if (!poll) {
         return null;
     }
 
     const handleSaveDetails = () => {
+        const nextErrors = validatePollInput({
+            title: editedTitle,
+            description: editedDescription,
+            imageUrl: editedImageUrl,
+            options: poll.options.map((option) => option.text),
+        });
+        setErrors(nextErrors);
+
+        if (hasValidationErrors(nextErrors)) {
+            return;
+        }
+
         onUpdatePoll(poll.id, {
             title: editedTitle,
             description: editedDescription,
             imageUrl: editedImageUrl,
         });
+        trackUserActivity("poll", `update-poll:${poll.id}`);
         navigate(-1);
     };
 
@@ -51,8 +67,9 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                     value={editedTitle}
                     onChange={(event) => setEditedTitle(event.target.value)}
                     placeholder="Poll title"
-                    style={inputStyle}
+                    style={{ ...inputStyle, border: errors.title ? "2px solid #ef4444" : inputStyle.border }}
                 />
+                {errors.title ? <FieldError message={errors.title} /> : null}
             </FieldRow>
 
             <FieldRow label="Description">
@@ -61,8 +78,9 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                     onChange={(event) => setEditedDescription(event.target.value)}
                     placeholder="Poll description"
                     rows={4}
-                    style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+                    style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", border: errors.description ? "2px solid #ef4444" : inputStyle.border }}
                 />
+                {errors.description ? <FieldError message={errors.description} /> : null}
             </FieldRow>
 
             <FieldRow label="Photo URL">
@@ -78,7 +96,7 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                         value={editedImageUrl}
                         onChange={(event) => setEditedImageUrl(event.target.value)}
                         placeholder="https://..."
-                        style={inputStyle}
+                        style={{ ...inputStyle, border: errors.imageUrl ? "2px solid #ef4444" : inputStyle.border }}
                     />
                     <div
                         style={{
@@ -103,6 +121,7 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                         )}
                     </div>
                 </div>
+                {errors.imageUrl ? <FieldError message={errors.imageUrl} /> : null}
             </FieldRow>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -129,6 +148,10 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
             </div>
         </div>
     );
+}
+
+function FieldError({ message }: { message: string }) {
+    return <p style={{ color: "#b91c1c", fontSize: 12, margin: "6px 0 0 0" }}>{message}</p>;
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {

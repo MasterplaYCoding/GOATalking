@@ -1,6 +1,6 @@
 // src/App.tsx
-import { useEffect, useMemo, useState } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { SidebarLayout } from "./components/SidebarLayout";
 import { FeedPage } from "./pages/FeedPage";
 import { PresentationPage } from "./pages/PresentationPage";
@@ -8,6 +8,7 @@ import { LogInPage } from "./pages/authentication/LogInPage";
 import { SignUpPage } from "./pages/authentication/SignUpPage";
 import { PollEditPage } from "./pages/polls/PollEditPage";
 import { PollCreatePage } from "./pages/polls/PollCreatePage";
+import { setPreference, trackUserActivity } from "./services/browserMonitoringService";
 import { createMessage } from "./services/messageService";
 import { addOption, createPoll, updatePoll, vote } from "./services/pollService";
 import { useAppState } from "./store/useAppState";
@@ -27,6 +28,7 @@ import type { NewPollData } from "./components/PollCardCreate";
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     polls,
     setPolls,
@@ -60,6 +62,8 @@ function App() {
 
   // Track which poll we are currently editing
   const [activeEditPollId, setActiveEditPollId] = useState<string>(initialPolls[0].id);
+  const [isCrudDemoRunning, setIsCrudDemoRunning] = useState(false);
+  const crudDemoTimeoutsRef = useRef<number[]>([]);
 
   useEffect(() => {
     if (users.length === 0) setUsers([seededUser]);
@@ -100,15 +104,28 @@ function App() {
     users.length,
   ]);
 
+  useEffect(() => {
+    trackUserActivity("route", location.pathname);
+    setPreference("lastVisitedRoute", location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    return () => {
+      crudDemoTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, []);
+
   const handleUpdatePoll = (pollId: string, updates: Partial<typeof initialPolls[0]>) => {
     setPolls((currentPolls) =>
       currentPolls.map((poll) => (poll.id === pollId ? updatePoll(poll, updates) : poll))
     );
+    trackUserActivity("poll", `update-poll:${pollId}`);
   };
 
   const handleDeletePoll = (pollId: string) => {
     // Filters out the deleted poll and updates the global state
     setPolls((currentPolls) => currentPolls.filter((poll) => poll.id !== pollId));
+    trackUserActivity("poll", `delete-poll:${pollId}`);
   };
 
   const handleCreatePoll = (pollData: NewPollData) => {
@@ -130,6 +147,7 @@ function App() {
     };
 
     setPolls((currentPolls) => [nextPoll, ...currentPolls]);
+    trackUserActivity("poll", `create-poll:${nextPoll.id}`);
   };
 
   const handleVote = (pollId: string, optionId: string, userId: string) => {
@@ -147,6 +165,7 @@ function App() {
       currentPolls.map((currentPoll) => (currentPoll.id === pollId ? result.poll : currentPoll))
     );
     setUserVotes(result.userVotes);
+    trackUserActivity("poll", `vote:${pollId}:${optionId}`);
   };
 
   const handleSubmitMarginalityResponse = (response: MarginalityTestResponse) => {
@@ -157,6 +176,76 @@ function App() {
       );
 
       return [...withoutCurrentUsersResponse, response];
+    });
+    trackUserActivity("marginality", `submit-report:${response.testId}`);
+  };
+
+  const handleRunCrudDemo = () => {
+    if (isCrudDemoRunning) {
+      return;
+    }
+
+    setIsCrudDemoRunning(true);
+    trackUserActivity("demo", "start-crud-thread");
+    crudDemoTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    crudDemoTimeoutsRef.current = [];
+
+    const ownerId = currentUserId ?? seededUser.id;
+    const demoPollIds: string[] = [];
+
+    const schedule = (delay: number, callback: () => void) => {
+      const timeoutId = window.setTimeout(callback, delay);
+      crudDemoTimeoutsRef.current.push(timeoutId);
+    };
+
+    schedule(0, () => {
+      let demoPoll = createPoll(
+        "Live CRUD Demo Poll",
+        "General",
+        "This poll was created by the dashboard demo thread.",
+        "/logo.png"
+      );
+      demoPoll = addOption(addOption(demoPoll, "Create works", ownerId), "Delete works", ownerId);
+      demoPoll = { ...demoPoll, ownerId };
+      demoPollIds.push(demoPoll.id);
+      setPolls((currentPolls) => [demoPoll, ...currentPolls]);
+      trackUserActivity("demo", `create:${demoPoll.id}`);
+    });
+
+    schedule(1400, () => {
+      let secondDemoPoll = createPoll(
+        "Second Demo Poll",
+        "General",
+        "The demo thread added another entity to the list.",
+        "/logo.png"
+      );
+      secondDemoPoll = addOption(addOption(secondDemoPoll, "Visible add", ownerId), "Visible delete", ownerId);
+      secondDemoPoll = { ...secondDemoPoll, ownerId };
+      demoPollIds.push(secondDemoPoll.id);
+      setPolls((currentPolls) => [secondDemoPoll, ...currentPolls]);
+      trackUserActivity("demo", `create:${secondDemoPoll.id}`);
+    });
+
+    schedule(2800, () => {
+      const firstDemoPollId = demoPollIds[0];
+
+      if (firstDemoPollId) {
+        setPolls((currentPolls) => currentPolls.filter((poll) => poll.id !== firstDemoPollId));
+        trackUserActivity("demo", `delete:${firstDemoPollId}`);
+      }
+    });
+
+    schedule(4200, () => {
+      const secondDemoPollId = demoPollIds[1];
+
+      if (secondDemoPollId) {
+        setPolls((currentPolls) => currentPolls.filter((poll) => poll.id !== secondDemoPollId));
+        trackUserActivity("demo", `delete:${secondDemoPollId}`);
+      }
+
+      setIsCrudDemoRunning(false);
+      crudDemoTimeoutsRef.current = [];
+      trackUserActivity("demo", "finish-crud-thread");
     });
   };
   
@@ -226,6 +315,8 @@ function App() {
                 currentUserId={currentUserId ?? seededUser.id}
                 userVotes={userVotes}
                 onVote={handleVote}
+                onRunCrudDemo={handleRunCrudDemo}
+                isCrudDemoRunning={isCrudDemoRunning}
               />
             </div>
           }

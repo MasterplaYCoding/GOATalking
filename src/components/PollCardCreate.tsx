@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { trackUserActivity } from "../services/browserMonitoringService";
+import { hasValidationErrors, validatePollInput } from "../services/validationService";
 import { theme } from "../theme/theme";
 
 export type NewPollData = {
@@ -16,6 +18,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    const [errors, setErrors] = useState<Partial<Record<"title" | "description" | "imageUrl" | "options", string>>>({});
     
     // Start with 2 empty options by default
     const [options, setOptions] = useState<string[]>(["", ""]);
@@ -35,17 +38,24 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
     };
 
     const handleSave = () => {
-        // Basic validation: ensure we have a title and at least 2 filled options
         const filledOptions = options.filter(opt => opt.trim() !== "");
-        if (!title.trim() || filledOptions.length < 2) {
-            alert("Please provide a title and at least two options.");
-            return;
-        }
-
-        onCreatePoll({
+        const nextErrors = validatePollInput({
             title,
             description,
             imageUrl,
+            options,
+        });
+        setErrors(nextErrors);
+
+        if (hasValidationErrors(nextErrors)) {
+            return;
+        }
+
+        trackUserActivity("poll", "create-poll-submit");
+        onCreatePoll({
+            title: title.trim(),
+            description: description.trim(),
+            imageUrl: imageUrl.trim(),
             options: filledOptions,
         });
     };
@@ -71,8 +81,9 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
                     placeholder="E.g., What is your go-to morning drink?"
-                    style={inputStyle}
+                    style={{ ...inputStyle, border: errors.title ? "2px solid #ef4444" : inputStyle.border }}
                 />
+                {errors.title ? <FieldError message={errors.title} /> : null}
             </FieldRow>
 
             <FieldRow label="Description">
@@ -81,8 +92,9 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                     onChange={(event) => setDescription(event.target.value)}
                     placeholder="Add some context to your poll..."
                     rows={3}
-                    style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+                    style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", border: errors.description ? "2px solid #ef4444" : inputStyle.border }}
                 />
+                {errors.description ? <FieldError message={errors.description} /> : null}
             </FieldRow>
 
             <FieldRow label="Photo URL">
@@ -98,7 +110,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                         value={imageUrl}
                         onChange={(event) => setImageUrl(event.target.value)}
                         placeholder="https://..."
-                        style={inputStyle}
+                        style={{ ...inputStyle, border: errors.imageUrl ? "2px solid #ef4444" : inputStyle.border }}
                     />
                     <div
                         style={{
@@ -123,6 +135,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                         )}
                     </div>
                 </div>
+                {errors.imageUrl ? <FieldError message={errors.imageUrl} /> : null}
             </FieldRow>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px" }}>
@@ -155,6 +168,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                         )}
                     </div>
                 ))}
+                {errors.options ? <FieldError message={errors.options} /> : null}
 
                 <button 
                     onClick={handleAddOption} 
@@ -187,6 +201,10 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
             </div>
         </div>
     );
+}
+
+function FieldError({ message }: { message: string }) {
+    return <p style={{ color: "#b91c1c", fontSize: 12, margin: "6px 0 0 0" }}>{message}</p>;
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {

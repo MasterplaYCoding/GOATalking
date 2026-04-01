@@ -5,9 +5,10 @@ type TextInputProps = {
     onChange: (value: string) => void;
     label?: string;
     type?: "text" | "password";
+    error?: string;
 };
 
-export function TextInput({ value, onChange, label, type = "text"}: TextInputProps) {
+export function TextInput({ value, onChange, label, type = "text", error }: TextInputProps) {
     return (
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "6px", margin: "0 auto", boxSizing: "border-box" }}>
             {label && (
@@ -33,7 +34,7 @@ export function TextInput({ value, onChange, label, type = "text"}: TextInputPro
                     display: "block",
                     padding: theme.spacing.md,
                     borderRadius: 20,
-                    border: `2px solid white`,
+                    border: error ? "2px solid #ef4444" : `2px solid white`,
                     background: "transparent",
                     color: "white",
                     outline: "none",
@@ -41,6 +42,11 @@ export function TextInput({ value, onChange, label, type = "text"}: TextInputPro
                     margin: 0
                 }}
             />
+            {error ? (
+                <p style={{ color: "#fecaca", fontSize: 12, margin: 0 }}>
+                    {error}
+                </p>
+            ) : null}
         </div>
     );
 }

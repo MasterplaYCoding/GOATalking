@@ -5,7 +5,9 @@ import type {
   MarginalityProfileFieldDefinition,
   MarginalityTest,
 } from "../../domain/MarginalityTest";
+import { trackUserActivity } from "../../services/browserMonitoringService";
 import { getAgeGroupFromAge } from "../../services/marginalityTestService";
+import { hasValidationErrors, validateDynamicProfileValues } from "../../services/validationService";
 import { theme } from "../../theme/theme";
 import type { MarginalityDraftState } from "./flowTypes";
 
@@ -18,17 +20,17 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
   const { testId } = useParams<{ testId: string }>();
   const test = useMemo(() => tests.find((currentTest) => currentTest.id === testId), [testId, tests]);
   const [profileValues, setProfileValues] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!test) {
     return <CenteredMessage message="Marginality test not found." />;
   }
 
   const handleStart = () => {
-    const missingRequiredField = test.profileFields.some(
-      (field) => field.required && !profileValues[field.key]?.trim()
-    );
+    const nextErrors = validateDynamicProfileValues(test.profileFields, profileValues);
+    setErrors(nextErrors);
 
-    if (missingRequiredField) {
+    if (hasValidationErrors(nextErrors)) {
       return;
     }
 
@@ -47,6 +49,7 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
       answers: {},
     };
 
+    trackUserActivity("marginality", `start-test:${test.id}`);
     navigate(`/marginality-test/${test.id}/questions/0`, { state: draftState });
   };
 
@@ -71,6 +74,7 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
                     [field.key]: value,
                   }))
                 }
+                error={errors[field.key]}
               />
             </Field>
           ))}
@@ -93,45 +97,56 @@ function DynamicProfileInput({
   field,
   value,
   onChange,
+  error,
 }: {
   field: MarginalityProfileFieldDefinition;
   value: string;
   onChange: (value: string) => void;
+  error?: string;
 }) {
   if (field.inputType === "select") {
     return (
-      <select value={value} onChange={(event) => onChange(event.target.value)} style={inputStyle}>
-        <option value="">{field.placeholder ?? `Select ${field.label}`}</option>
-        {(field.options ?? []).map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <>
+        <select value={value} onChange={(event) => onChange(event.target.value)} style={{ ...inputStyle, border: error ? "1px solid #ef4444" : inputStyle.border }}>
+          <option value="">{field.placeholder ?? `Select ${field.label}`}</option>
+          {(field.options ?? []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        {error ? <FieldError message={error} /> : null}
+      </>
     );
   }
 
   if (field.inputType === "number") {
     return (
-      <input
-        type="number"
-        min={field.min}
-        max={field.max}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={field.placeholder}
-        style={inputStyle}
-      />
+      <>
+        <input
+          type="number"
+          min={field.min}
+          max={field.max}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={field.placeholder}
+          style={{ ...inputStyle, border: error ? "1px solid #ef4444" : inputStyle.border }}
+        />
+        {error ? <FieldError message={error} /> : null}
+      </>
     );
   }
 
   return (
-    <input
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={field.placeholder}
-      style={inputStyle}
-    />
+    <>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={field.placeholder}
+        style={{ ...inputStyle, border: error ? "1px solid #ef4444" : inputStyle.border }}
+      />
+      {error ? <FieldError message={error} /> : null}
+    </>
   );
 }
 
@@ -142,6 +157,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       {children}
     </div>
   );
+}
+
+function FieldError({ message }: { message: string }) {
+  return <p style={{ color: "#b91c1c", fontSize: "0.78rem", margin: "6px 0 0 0" }}>{message}</p>;
 }
 
 function CenteredMessage({ message }: { message: string }) {

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { Poll } from "../domain/Poll";
+import { getPreference, setPreference } from "../services/browserMonitoringService";
 import type { UserVotes } from "../domain/User";
 import { theme } from "../theme/theme";
 import { PollCard } from "./PollCard";
@@ -63,7 +64,7 @@ const getGradientColor = (index: number, maxIndex: number) => {
 };
 
 export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId, userVotes, onVote }: UserPollsTableProps) {
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [viewMode, setViewMode] = useState<"table" | "grid">(() => getPreference("dashboardViewMode") ?? "table");
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedPollId, setSelectedPollId] = useState<string | null>(null);
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
@@ -325,7 +326,10 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
           }}
         >
           <button
-            onClick={() => setViewMode("table")}
+            onClick={() => {
+              setViewMode("table");
+              setPreference("dashboardViewMode", "table");
+            }}
             style={{
               background: viewMode === "table" ? "rgba(255, 255, 255, 0.1)" : "transparent",
               border: "none",
@@ -341,7 +345,10 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
             <span className="material-symbols-outlined" style={{ fontSize: "1.4rem" }}>table_rows</span>
           </button>
           <button
-            onClick={() => setViewMode("grid")}
+            onClick={() => {
+              setViewMode("grid");
+              setPreference("dashboardViewMode", "grid");
+            }}
             style={{
               background: viewMode === "grid" ? "rgba(255, 255, 255, 0.1)" : "transparent",
               border: "none",
