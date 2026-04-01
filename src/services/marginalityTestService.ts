@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import type {
+  AgeGroupKey,
   GroupAverageResult,
   MarginalityDistanceReport,
   MarginalityProfileFieldDefinition,
@@ -9,6 +10,7 @@ import type {
   MarginalityTestResponse,
   QuestionAgreementVote,
 } from "../domain/MarginalityTest";
+import { AGE_GROUP_DETAILS } from "../domain/MarginalityTest";
 
 type GroupableKey = keyof MarginalityProfile;
 
@@ -61,6 +63,15 @@ export function getResponsesForTest(
   return responses.filter((response) => response.testId === testId);
 }
 
+export function getAgeGroupFromAge(age: number): AgeGroupKey {
+  const normalizedAge = Math.max(0, Math.round(age));
+  const matchedGroup = Object.values(AGE_GROUP_DETAILS).find(
+    (group) => normalizedAge >= group.minAge && normalizedAge <= group.maxAge
+  );
+
+  return matchedGroup?.key ?? "Boomers";
+}
+
 export function getQuestionAverageByGroup(
   responses: MarginalityTestResponse[],
   questionId: string,
@@ -86,6 +97,17 @@ export function getQuestionAverageByGroup(
     averageAgreement: average(values),
     responsesCount: values.length,
   }));
+}
+
+export function getQuestionOverallAverage(
+  responses: MarginalityTestResponse[],
+  questionId: string
+): number {
+  const values = responses
+    .map((response) => response.votes.find((currentVote) => currentVote.questionId === questionId)?.agreement)
+    .filter((agreement): agreement is number => typeof agreement === "number");
+
+  return average(values);
 }
 
 export function getOverallAverageByGroup(

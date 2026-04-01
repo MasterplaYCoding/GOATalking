@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { Poll } from "../domain/Poll";
 import { theme } from "../theme/theme";
 import { getCurrentStandings } from "../services/pollService";
+import { useNavigate } from "react-router-dom";
 
 type PollCardEditProps = {
     pollId: string;
@@ -10,6 +11,7 @@ type PollCardEditProps = {
 };
 
 export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps) {
+    const navigate = useNavigate();
     const poll = polls.find((currentPoll) => currentPoll.id === pollId);
 
     const [editedTitle, setEditedTitle] = useState(poll?.title ?? "");
@@ -26,13 +28,14 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
             description: editedDescription,
             imageUrl: editedImageUrl,
         });
+        navigate(-1);
     };
 
 
     return (
         <div
             style={{
-                width: "50%",
+                width: "100%",
                 backgroundColor: "#C4DBD5",
                 borderRadius: "20px",
                 padding: "24px",

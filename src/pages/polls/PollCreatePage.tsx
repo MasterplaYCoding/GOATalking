@@ -1,36 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import type { Poll } from "../../domain/Poll";
-import { PollCardEdit } from "../../components/PollCardEdit";
+import { PollCardCreate, type NewPollData } from "../../components/PollCardCreate";
 
-type PollPageProps = {
-    pollId: string;
-    polls: Poll[];
-    onUpdatePoll: (pollId: string, updates: Partial<Poll>) => void;
+type PollCreatePageProps = {
+    onCreatePoll: (pollData: NewPollData) => void;
 };
 
-export function PollEditPage({
-    pollId,
-    polls,
-    onUpdatePoll,
-}: PollPageProps) {
-    const navigate = useNavigate(); // Hook added to power the back button
+export function PollCreatePage({ onCreatePoll }: PollCreatePageProps) {
+    const navigate = useNavigate();
 
-    const poll = polls.find((currentPoll) => currentPoll.id === pollId);
-
-    if (!poll) {
-        return (
-            <div style={{ minHeight: "100vh", padding: "24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                <h1 style={{ color: "white", margin: 0 }}>Poll not found</h1>
-            </div>
-        );
-    }
+    const handleCreateAndBack = (pollData: NewPollData) => {
+        onCreatePoll(pollData); // 1. Save the new poll to your state
+        navigate(-1);           // 2. Go back to your polls list
+    };
 
     return (
         <div style={{ position: "relative", minHeight: "100vh", width: "100%", padding: "32px 24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
             
             {/* Absolute positioned back button in the top left */}
             <button 
-                onClick={() => navigate(-1)} // Navigates back to the previous page
+                onClick={() => navigate(-1)}
                 style={{
                     position: "absolute",
                     top: "40px",
@@ -54,13 +42,9 @@ export function PollEditPage({
                 Back
             </button>
 
-            {/* Width and height 100% removed so it naturally hugs the card and centers perfectly */}
-            <div style={{ overflow: "hidden" }}>
-                <PollCardEdit
-                    pollId={poll.id}
-                    polls={polls}
-                    onUpdatePoll={onUpdatePoll}
-                />
+            {/* Inner wrapper doesn't force 100% width/height so Flexbox centers it */}
+            <div style={{ overflow: "hidden", width: "100%", display: "flex", justifyContent: "center" }}>
+                <PollCardCreate onCreatePoll={handleCreateAndBack} />
             </div> 
         </div>
     );

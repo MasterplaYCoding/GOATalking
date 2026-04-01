@@ -1,3 +1,8 @@
+import boomerImage from "../assets/boomer.png";
+import genXImage from "../assets/genX.png";
+import genZImage from "../assets/genZ.png";
+import millenialsImage from "../assets/millenials.png";
+
 export interface AgeGroup {
   GenZ: "GenZ";
   Millenials: "Millenials";
@@ -13,6 +18,46 @@ export const AGE_GROUPS: AgeGroup = {
 };
 
 export type AgeGroupKey = keyof AgeGroup;
+export type ProfileFieldInputType = "text" | "select" | "number";
+
+export interface AgeGroupDefinition {
+  key: AgeGroupKey;
+  label: string;
+  minAge: number;
+  maxAge: number;
+  imageSrc: string;
+}
+
+export const AGE_GROUP_DETAILS: Record<AgeGroupKey, AgeGroupDefinition> = {
+  GenZ: {
+    key: "GenZ",
+    label: "Gen Z",
+    minAge: 13,
+    maxAge: 28,
+    imageSrc: genZImage,
+  },
+  Millenials: {
+    key: "Millenials",
+    label: "Millennials",
+    minAge: 29,
+    maxAge: 44,
+    imageSrc: millenialsImage,
+  },
+  GenX: {
+    key: "GenX",
+    label: "Gen X",
+    minAge: 45,
+    maxAge: 60,
+    imageSrc: genXImage,
+  },
+  Boomers: {
+    key: "Boomers",
+    label: "Boomers",
+    minAge: 61,
+    maxAge: 120,
+    imageSrc: boomerImage,
+  },
+};
 
 export type FootballWatchingLevel = "Rarely" | "Casual" | "Weekly" | "Obsessed";
 
@@ -22,6 +67,7 @@ export interface MarginalityQuestion {
 }
 
 export interface MarginalityProfile {
+  age: number;
   ageGroup: AgeGroupKey;
   country: string;
   footballWatchingLevel: FootballWatchingLevel;
@@ -33,10 +79,12 @@ export type MarginalityProfileFieldKey = keyof MarginalityProfile;
 export interface MarginalityProfileFieldDefinition {
   key: MarginalityProfileFieldKey;
   label: string;
-  inputType: "text" | "select";
+  inputType: ProfileFieldInputType;
   required?: boolean;
   placeholder?: string;
   options?: string[];
+  min?: number;
+  max?: number;
 }
 
 export interface QuestionAgreementVote {

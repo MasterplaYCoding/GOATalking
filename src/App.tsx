@@ -7,8 +7,9 @@ import { PresentationPage } from "./pages/PresentationPage";
 import { LogInPage } from "./pages/authentication/LogInPage";
 import { SignUpPage } from "./pages/authentication/SignUpPage";
 import { PollEditPage } from "./pages/polls/PollEditPage";
+import { PollCreatePage } from "./pages/polls/PollCreatePage";
 import { createMessage } from "./services/messageService";
-import { updatePoll, vote } from "./services/pollService";
+import { addOption, createPoll, updatePoll, vote } from "./services/pollService";
 import { useAppState } from "./store/useAppState";
 import {
   getSeededMarginalityResponses,
@@ -22,6 +23,7 @@ import { MarginalityTestPage } from "./pages/MarginalityTestPage";
 import { TakeMarginalityTest } from "./pages/marginality/TakeMarginalityTest";
 import { MarginalityTestPage as MarginalityQuestionPage } from "./pages/marginality/MarginalityTestPage";
 import { MarginalityReport } from "./pages/marginality/MarginalityReport";
+import type { NewPollData } from "./components/PollCardCreate";
 
 function App() {
   const navigate = useNavigate();
@@ -109,6 +111,27 @@ function App() {
     setPolls((currentPolls) => currentPolls.filter((poll) => poll.id !== pollId));
   };
 
+  const handleCreatePoll = (pollData: NewPollData) => {
+    const ownerId = currentUserId ?? seededUser.id;
+    let nextPoll = createPoll(
+      pollData.title.trim(),
+      "General",
+      pollData.description.trim(),
+      pollData.imageUrl.trim() || "/logo.png"
+    );
+
+    pollData.options.forEach((optionText) => {
+      nextPoll = addOption(nextPoll, optionText.trim(), ownerId);
+    });
+
+    nextPoll = {
+      ...nextPoll,
+      ownerId,
+    };
+
+    setPolls((currentPolls) => [nextPoll, ...currentPolls]);
+  };
+
   const handleVote = (pollId: string, optionId: string, userId: string) => {
     // 1. Find the poll using the ID
     const poll = polls.find((currentPoll) => currentPoll.id === pollId);
@@ -193,7 +216,7 @@ function App() {
             <div style={{ minHeight: "100vh" }}>
               <UserStatsPage
                 polls={polls}
-                onAdd={() => navigate("/edit")}
+                onAdd={() => navigate("/create-poll")}
                 onUpdate={(id: string) => {
                   setActiveEditPollId(id);
                   navigate("/edit");
@@ -234,6 +257,7 @@ function App() {
             <div style={{ minHeight: "100vh" }}>
               <MarginalityQuestionPage
                 tests={marginalityTests.length > 0 ? marginalityTests : initialMarginalityTests}
+                responses={marginalityResponses.length > 0 ? marginalityResponses : initialMarginalityResponses}
               />
             </div>
           }
@@ -248,6 +272,14 @@ function App() {
                 currentUserId={currentUserId ?? seededUser.id}
                 onSubmitResponse={handleSubmitMarginalityResponse}
               />
+            </div>
+          }
+        />
+        <Route
+          path="/create-poll"
+          element={
+            <div style={{ minHeight: "100vh" }}>
+              <PollCreatePage onCreatePoll={handleCreatePoll} />
             </div>
           }
         />

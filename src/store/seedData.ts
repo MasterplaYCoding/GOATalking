@@ -1,11 +1,11 @@
 import { addOption, createPoll } from "../services/pollService";
 import {
-  AGE_GROUPS,
   type MarginalityProfileFieldDefinition,
   type MarginalityTest,
   type MarginalityTestResponse,
 } from "../domain/MarginalityTest";
 import { createMarginalityResponse, createMarginalityTest } from "../services/marginalityTestService";
+import { getAgeGroupFromAge } from "../services/marginalityTestService";
 import type { Poll } from "../domain/Poll";
 import type { User } from "../domain/User";
 
@@ -223,11 +223,13 @@ const footballMarginalityQuestionTexts = [
 
 const footballProfileFields: MarginalityProfileFieldDefinition[] = [
   {
-    key: "ageGroup",
-    label: "Age Group",
-    inputType: "select",
+    key: "age",
+    label: "Age",
+    inputType: "number",
     required: true,
-    options: Object.keys(AGE_GROUPS),
+    min: 13,
+    max: 100,
+    placeholder: "e.g. 27",
   },
   {
     key: "country",
@@ -295,7 +297,8 @@ export const getSeededMarginalityResponses = (
       footballTest.id,
       "demo-user",
       {
-        ageGroup: AGE_GROUPS.Millenials,
+        age: 31,
+        ageGroup: getAgeGroupFromAge(31),
         country: "Romania",
         footballWatchingLevel: "Weekly",
         favoriteClub: "Barcelona",
@@ -306,7 +309,8 @@ export const getSeededMarginalityResponses = (
       footballTest.id,
       "user-spain-1",
       {
-        ageGroup: AGE_GROUPS.GenZ,
+        age: 24,
+        ageGroup: getAgeGroupFromAge(24),
         country: "Spain",
         footballWatchingLevel: "Obsessed",
         favoriteClub: "Real Madrid",
@@ -317,7 +321,8 @@ export const getSeededMarginalityResponses = (
       footballTest.id,
       "user-england-1",
       {
-        ageGroup: AGE_GROUPS.GenX,
+        age: 49,
+        ageGroup: getAgeGroupFromAge(49),
         country: "England",
         footballWatchingLevel: "Weekly",
         favoriteClub: "Liverpool",
@@ -328,7 +333,8 @@ export const getSeededMarginalityResponses = (
       footballTest.id,
       "user-germany-1",
       {
-        ageGroup: AGE_GROUPS.Boomers,
+        age: 66,
+        ageGroup: getAgeGroupFromAge(66),
         country: "Germany",
         footballWatchingLevel: "Casual",
       },
@@ -338,7 +344,8 @@ export const getSeededMarginalityResponses = (
       footballTest.id,
       "user-argentina-1",
       {
-        ageGroup: AGE_GROUPS.Millenials,
+        age: 36,
+        ageGroup: getAgeGroupFromAge(36),
         country: "Argentina",
         footballWatchingLevel: "Obsessed",
         favoriteClub: "River Plate",

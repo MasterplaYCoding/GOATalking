@@ -5,6 +5,7 @@ import type {
   MarginalityProfileFieldDefinition,
   MarginalityTest,
 } from "../../domain/MarginalityTest";
+import { getAgeGroupFromAge } from "../../services/marginalityTestService";
 import { theme } from "../../theme/theme";
 import type { MarginalityDraftState } from "./flowTypes";
 
@@ -31,8 +32,11 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
       return;
     }
 
+    const age = Number(profileValues.age ?? 0);
+
     const profile: MarginalityProfile = {
-      ageGroup: (profileValues.ageGroup || "GenZ") as MarginalityProfile["ageGroup"],
+      age,
+      ageGroup: getAgeGroupFromAge(age),
       country: profileValues.country?.trim() || "",
       footballWatchingLevel: (profileValues.footballWatchingLevel || "Casual") as MarginalityProfile["footballWatchingLevel"],
       favoriteClub: profileValues.favoriteClub?.trim() || undefined,
@@ -104,6 +108,20 @@ function DynamicProfileInput({
           </option>
         ))}
       </select>
+    );
+  }
+
+  if (field.inputType === "number") {
+    return (
+      <input
+        type="number"
+        min={field.min}
+        max={field.max}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={field.placeholder}
+        style={inputStyle}
+      />
     );
   }
 
