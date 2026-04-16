@@ -1,20 +1,15 @@
-import { useNavigate } from "react-router-dom";
-import type { Poll } from "../../domain/Poll";
+import { useNavigate, useParams } from "react-router-dom";
 import { PollCardEdit } from "../../components/PollCardEdit";
 import { useResponsive } from "../../hooks/useResponsive";
+import { useGlobalStore } from "../../store/useGlobalStore";
 
-type PollPageProps = {
-    pollId: string;
-    polls: Poll[];
-    onUpdatePoll: (pollId: string, updates: Partial<Poll>) => void;
-};
+export function PollEditPage() {
 
-export function PollEditPage({
-    pollId,
-    polls,
-    onUpdatePoll,
-}: PollPageProps) {
-    const navigate = useNavigate(); // Hook added to power the back button
+    const polls = useGlobalStore((state) => state.polls);
+    const { pollId } = useParams();
+
+    const handleUpdatePoll = useGlobalStore((state) => state.handleUpdatePoll);
+    const navigate = useNavigate();
     const { isMobile } = useResponsive();
 
     const poll = polls.find((currentPoll) => currentPoll.id === pollId);
@@ -30,9 +25,8 @@ export function PollEditPage({
     return (
         <div style={{ position: "relative", minHeight: "100vh", width: "100%", padding: isMobile ? "20px 16px 24px" : "32px 24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
             
-            {/* Absolute positioned back button in the top left */}
             <button 
-                onClick={() => navigate(-1)} // Navigates back to the previous page
+                onClick={() => navigate(-1)}
                 style={{
                     position: "absolute",
                     top: isMobile ? "14px" : "40px",
@@ -56,12 +50,11 @@ export function PollEditPage({
                 Back
             </button>
 
-            {/* Width and height 100% removed so it naturally hugs the card and centers perfectly */}
             <div style={{ overflow: "hidden", width: "100%", maxWidth: "960px", marginTop: isMobile ? "36px" : 0 }}>
                 <PollCardEdit
                     pollId={poll.id}
                     polls={polls}
-                    onUpdatePoll={onUpdatePoll}
+                    onUpdatePoll={handleUpdatePoll}
                 />
             </div> 
         </div>

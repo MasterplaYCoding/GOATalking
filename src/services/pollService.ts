@@ -17,7 +17,6 @@ export function createPoll(
     options: [],
     dateCreated: new Date(),
     interactionCount: 0,
-    nrMessages: 0
   };
 }
 

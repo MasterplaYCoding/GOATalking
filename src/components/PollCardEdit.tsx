@@ -140,7 +140,6 @@ export function PollCardEdit({ pollId, polls, onUpdatePoll }: PollCardEditProps)
                         gap: "16px",
                     }}
                 >
-                    <DetailLabel label="Comments" value={String(poll.nrMessages)} />
                     <DetailLabel label="Votes" value={String(poll.interactionCount)} />
                     <DetailLabel label="Posted on" value={poll.dateCreated.toLocaleDateString()} />
                     <button onClick={handleSaveDetails} style={primaryButtonStyle}>

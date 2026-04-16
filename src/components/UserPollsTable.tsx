@@ -5,18 +5,16 @@ import type { UserVotes } from "../domain/User";
 import { useResponsive } from "../hooks/useResponsive";
 import { theme } from "../theme/theme";
 import { PollCard } from "./PollCard";
+import { useNavigate } from "react-router-dom";
+import { useGlobalStore } from "../store/useGlobalStore";
 
 type UserPollsTableProps = {
   polls: Poll[];
-  onAdd: () => void;
-  onUpdate: (pollId: string) => void;
-  onDelete: (pollId: string) => void;
   currentUserId: string;
   userVotes: UserVotes;
-  onVote: (pollId: string, optionId: string, userId: string) => void;
 };
 
-// --- Helper: Calculate the Front Runner ---
+
 const getFrontRunner = (options: Poll["options"]) => {
   if (!options || options.length === 0) return "No options";
 
@@ -41,7 +39,6 @@ const getFrontRunner = (options: Poll["options"]) => {
   return leaders[0];
 };
 
-// --- Helper: Hex to RGB Converter ---
 const hexToRgb = (hex: string) => {
   const cleanHex = hex.replace("#", "");
   const r = parseInt(cleanHex.substring(0, 2), 16);
@@ -50,7 +47,7 @@ const hexToRgb = (hex: string) => {
   return [r, g, b];
 };
 
-// --- Helper: Color Interpolation Math ---
+
 const getGradientColor = (index: number, maxIndex: number) => {
   const topRgb = hexToRgb(theme.colors?.secondary || "#47C7AA");
   const bottomRgb = hexToRgb(theme.colors?.primary || "#1F3D3A");
@@ -64,7 +61,7 @@ const getGradientColor = (index: number, maxIndex: number) => {
   return `rgb(${r}, ${g}, ${b})`;
 };
 
-export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId, userVotes, onVote }: UserPollsTableProps) {
+export function UserPollsTable({ polls, currentUserId, userVotes }: UserPollsTableProps) {
   const [viewMode, setViewMode] = useState<"table" | "grid">(() => getPreference("dashboardViewMode") ?? "table");
   const { isMobile } = useResponsive();
   const [currentPage, setCurrentPage] = useState(0);
@@ -85,6 +82,11 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
   const bottomColor = theme.colors?.primary || "#1F3D3A";
   const verticalGradient = `linear-gradient(to bottom, ${topColor}, ${bottomColor})`;
 
+  const handleVote = useGlobalStore((state) => state.handleVote);
+  const handleDeletePoll = useGlobalStore((state) => state.handleDeletePoll);
+
+  const navigate = useNavigate();
+
   const ShortDivider = ({ color }: { color: string }) => (
     <div 
       style={{ 
@@ -97,11 +99,13 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
     />
   );
 
+  const handleEditClick = (pollId: string) => {
+    navigate(`/edit/${pollId}`); 
+  };
+
   return (
-    // Added overflow: "hidden" here so the container perfectly contains the content
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", gap: "16px", overflow: "hidden" }}>
       
-      {/* Hide scrollbars for Webkit browsers (Chrome/Safari) */}
       <style>{`
         .hide-scroll::-webkit-scrollbar {
           display: none;
@@ -115,7 +119,6 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
       ) : (
         <>
           {effectiveViewMode === "table" ? (
-            // ================== TABLE VIEW ==================
             <div
               style={{
                 position: "relative", 
@@ -126,7 +129,7 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
                 borderWidth: "2px",
                 borderImage: `${verticalGradient} 1`,
                 textAlign: "center",
-                overflow: "hidden", // Table fits perfectly, so we hide overflow
+                overflow: "hidden",
               }}
             >
               {[20, 40, 60, 80].map((percent) => (
@@ -274,7 +277,7 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
                         polls={polls}
                         currentUserId={currentUserId}
                         userVotes={userVotes}
-                        onVote={onVote}
+                        onVote={handleVote}
                       />
                     </div>
                   </div>
@@ -285,9 +288,6 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
         </>
       )}
 
-      {/* ======================================================== */}
-      {/* BOTTOM CONTROLS: Action Buttons, View Toggle, Pagination */}
-      {/* ======================================================== */}
       <div 
         style={{ 
           display: "grid", 
@@ -301,23 +301,22 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
         
         {/* Left: Action Buttons */}
         <div style={{ display: "flex", gap: "12px", justifySelf: isMobile ? "stretch" : "flex-start", flexWrap: "wrap" }}>
-          <ActionButton icon="add" text="Add" onClick={onAdd} />
+          <ActionButton icon="add" text="Add" onClick={() => navigate("/create-poll")} />
           <ActionButton 
             icon="edit" 
             text="Update" 
-            onClick={() => selectedPollId && onUpdate(selectedPollId)} 
+            onClick={() => selectedPollId && handleEditClick(selectedPollId)} 
             disabled={!selectedPollId} 
           />
           <ActionButton 
             icon="delete" 
             text="Delete" 
-            onClick={() => selectedPollId && onDelete(selectedPollId)} 
+            onClick={() => selectedPollId && handleDeletePoll(selectedPollId)} 
             disabled={!selectedPollId} 
             isDanger={true}
           />
         </div>
 
-        {/* Center: View Toggle Switch */}
         <div 
           style={{ 
             display: "flex", 
@@ -426,7 +425,6 @@ export function UserPollsTable({ polls, onAdd, onUpdate, onDelete, currentUserId
   );
 }
 
-// ActionButton component remains identical
 type ActionButtonProps = {
   icon: string;
   text: string;

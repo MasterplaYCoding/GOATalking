@@ -1,24 +1,21 @@
 import { useNavigate } from "react-router-dom";
 import { PollCardCreate, type NewPollData } from "../../components/PollCardCreate";
 import { useResponsive } from "../../hooks/useResponsive";
+import { useGlobalStore } from "../../store/useGlobalStore";
 
-type PollCreatePageProps = {
-    onCreatePoll: (pollData: NewPollData) => void;
-};
-
-export function PollCreatePage({ onCreatePoll }: PollCreatePageProps) {
+export function PollCreatePage() {
     const navigate = useNavigate();
     const { isMobile } = useResponsive();
+    const handleCreatePoll = useGlobalStore((state) => state.handleCreatePoll);
 
     const handleCreateAndBack = (pollData: NewPollData) => {
-        onCreatePoll(pollData); // 1. Save the new poll to your state
-        navigate(-1);           // 2. Go back to your polls list
+        handleCreatePoll(pollData);
+        navigate(-1);             
     };
 
     return (
         <div style={{ position: "relative", minHeight: "100vh", width: "100%", padding: isMobile ? "20px 16px 24px" : "32px 24px", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center" }}>
             
-            {/* Absolute positioned back button in the top left */}
             <button 
                 onClick={() => navigate(-1)}
                 style={{
@@ -44,7 +41,6 @@ export function PollCreatePage({ onCreatePoll }: PollCreatePageProps) {
                 Back
             </button>
 
-            {/* Inner wrapper doesn't force 100% width/height so Flexbox centers it */}
             <div style={{ overflow: "hidden", width: "100%", display: "flex", justifyContent: "center", marginTop: isMobile ? "36px" : 0 }}>
                 <PollCardCreate onCreatePoll={handleCreateAndBack} />
             </div> 

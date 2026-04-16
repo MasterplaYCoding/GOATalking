@@ -1,32 +1,25 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { Poll } from "../domain/Poll";
-import type { UserVotes } from "../domain/User"; // 1. IMPORT USERVOTES
+import type { UserVotes } from "../domain/User";
 import { useResponsive } from "../hooks/useResponsive";
 import { UserPollsTable } from "../components/UserPollsTable";
+import { useCrudDemo } from "../workers/useCrudDemo";
 
-// 2. ADD THE MISSING PROPS HERE
 type UserStatsPageProps = {
     polls: Poll[];
-    onAdd: () => void;
-    onUpdate: (pollId: string) => void;
-    onDelete: (pollId: string) => void;
+    setPolls: (updater: Poll[] | ((currentPolls: Poll[]) => Poll[])) => void;
     currentUserId: string;
     userVotes: UserVotes;
-    onVote: (pollId: string, optionId: string, userId: string) => void;
-    onRunCrudDemo: () => void;
-    isCrudDemoRunning: boolean;
 };
 
-// --- Our custom Color Palette (Light to Dark) ---
 const CHART_COLORS = [
-    "#A3E4D7", // Very Light Mint (0-10 / 0-30%)
-    "#73C6B6", // Light Teal
-    "#47C7AA", // Secondary Color (Theme)
-    "#315B58", // Dark Teal
-    "#1F3D3A", // Primary Color (Theme)
+    "#A3E4D7",
+    "#73C6B6",
+    "#47C7AA",
+    "#315B58",
+    "#1F3D3A",
 ];
 
-// --- Reusable Pie Chart Component ---
 type ChartDataPoint = {
     label: string;
     value: number;
@@ -34,13 +27,11 @@ type ChartDataPoint = {
 };
 
 const PieChartCard = ({ title, description, data }: { title: string; description: string; data: ChartDataPoint[] }) => {
-    // Calculate total to find percentages
     const total = data.reduce((sum, item) => sum + item.value, 0);
 
-    // Generate the dynamic conic-gradient string
     let cumulativePercent = 0;
     const gradientStops = total === 0
-        ? "#e0e0e0 0% 100%" // Gray circle if there is no data at all
+        ? "#e0e0e0 0% 100%"
         : data.map((item) => {
             const percent = (item.value / total) * 100;
             const stop = `${item.color} ${cumulativePercent}% ${cumulativePercent + percent}%`;
@@ -69,7 +60,6 @@ const PieChartCard = ({ title, description, data }: { title: string; description
                 {description}
             </p>
 
-            {/* The Dynamic CSS Pie Chart */}
             <div
                 style={{
                     width: "160px",
@@ -100,26 +90,17 @@ const PieChartCard = ({ title, description, data }: { title: string; description
     );
 };
 
-// 3. DESTRUCTURE THE MISSING PROPS HERE
 export function UserStatsPage({
     polls,
-    onAdd,
-    onUpdate,
-    onDelete,
+    setPolls,
     currentUserId,
     userVotes,
-    onVote,
-    onRunCrudDemo,
-    isCrudDemoRunning,
 }: UserStatsPageProps) {
     const { isMobile, isTablet } = useResponsive();
-    
-    // 4. FILTER SO THE DASHBOARD ONLY SHOWS THE CURRENT USER'S POLLS
     const userPolls = useMemo(() => {
         return polls.filter(poll => poll.ownerId === currentUserId);
     }, [polls, currentUserId]);
 
-    // --- CHART 1 LOGIC: Poll Interactions ---
     const interactionData = useMemo(() => {
         const bins = [0, 0, 0, 0, 0];
 
@@ -141,7 +122,6 @@ export function UserStatsPage({
         ];
     }, [userPolls]);
 
-    // --- CHART 2 LOGIC: Frontrunner Dominance ---
     const dominanceData = useMemo(() => {
         const bins = [0, 0, 0, 0, 0];
 
@@ -172,6 +152,12 @@ export function UserStatsPage({
         ];
     }, [userPolls]);
 
+    const { isCrudDemoRunning, handleRunCrudDemo } = useCrudDemo(currentUserId, setPolls);
+
+    useEffect(() => {
+        console.log(`🖥️ UI RENDER: The screen just updated! It sees ${polls.length} total polls, and ${userPolls.length} belong to you.`);
+    }, [polls, userPolls]);
+
     return (
         <div
             style={{
@@ -189,20 +175,19 @@ export function UserStatsPage({
                     Track the performance and engagement of your polls.
                 </p>
                 <button
-                    onClick={onRunCrudDemo}
-                    disabled={isCrudDemoRunning}
+                    onClick={handleRunCrudDemo}
                     style={{
                         marginTop: "14px",
                         borderRadius: "999px",
                         border: "1px solid rgba(255,255,255,0.35)",
-                        background: isCrudDemoRunning ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.08)",
+                        background: isCrudDemoRunning ? "rgba(255, 151, 151, 0.18)" : "rgba(255,255,255,0.08)",
                         color: "white",
                         padding: "8px 16px",
                         fontWeight: 700,
-                        cursor: isCrudDemoRunning ? "not-allowed" : "pointer",
+                        cursor: "pointer",
                     }}
                 >
-                    {isCrudDemoRunning ? "CRUD demo running..." : "Run CRUD demo thread"}
+                    {isCrudDemoRunning ? "Stop CRUD demo thread" : "Run CRUD demo thread"}
                 </button>
             </div>
 
@@ -217,7 +202,6 @@ export function UserStatsPage({
                     width: "100%",
                 }}
             >
-                {/* LEFT COLUMN: Interaction Chart */}
                 <div style={{ position: isTablet ? "static" : "sticky", top: "40px", order: isTablet ? 1 : 0 }}>
                     <PieChartCard
                         title="Poll Interactions"
@@ -226,7 +210,6 @@ export function UserStatsPage({
                     />
                 </div>
 
-                {/* CENTER COLUMN: The Table */}
                 <div
                     style={{
                         backgroundColor: "rgba(255, 255, 255, 0.05)",
@@ -243,16 +226,11 @@ export function UserStatsPage({
                     </h2>
                     <UserPollsTable
                         polls={userPolls}
-                        onAdd={onAdd}
-                        onUpdate={onUpdate}
-                        onDelete={onDelete}
                         currentUserId={currentUserId}
                         userVotes={userVotes}
-                        onVote={onVote}
                     />
                 </div>
 
-                {/* RIGHT COLUMN: Dominance Chart */}
                 <div style={{ position: isTablet ? "static" : "sticky", top: "40px", order: isTablet ? 2 : 0 }}>
                     <PieChartCard
                         title="Frontrunner Dominance"

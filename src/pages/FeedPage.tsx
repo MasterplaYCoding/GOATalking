@@ -3,12 +3,13 @@ import { PollCard } from "../components/PollCard";
 import type { Poll } from "../domain/Poll";
 import { useResponsive } from "../hooks/useResponsive";
 import type { UserVotes } from "../domain/User";
+import { useGlobalStore } from "../store/useGlobalStore";
+
 
 type FeedPageProps = {
   polls: Poll[];
   currentUserId: string;
   userVotes: UserVotes;
-  onVote: (pollId: string, optionId: string, userId: string) => void;
 };
 
 const getEditDistance = (a: string, b: string): number => {
@@ -55,9 +56,11 @@ const isFuzzyMatch = (text: string, query: string): boolean => {
   );
 };
 
-export function FeedPage({ polls, currentUserId, userVotes, onVote }: FeedPageProps) {
+export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { isMobile, isTablet } = useResponsive();
+
+  const handleVote = useGlobalStore((state) => state.handleVote);
 
   const feedPolls = useMemo(
     () =>
@@ -147,7 +150,7 @@ export function FeedPage({ polls, currentUserId, userVotes, onVote }: FeedPagePr
                     polls={polls}
                     currentUserId={currentUserId}
                     userVotes={userVotes}
-                    onVote={onVote}
+                    onVote={handleVote}
                   />
                 </div>
               ))

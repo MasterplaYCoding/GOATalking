@@ -14,6 +14,5 @@ export interface Poll {
   options: PollOption[];
   dateCreated: Date;
   interactionCount: number;
-  nrMessages: number;
   ownerId?: string;
 }

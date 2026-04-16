@@ -17,30 +17,25 @@ export const getSeededUser = (): User => ({
   avatarUrl: "",
 });
 
-// --- HELPER FUNCTION ---
 const buildPollWithVotes = (
   title: string,
   category: string,
   description: string,
   imageUrl: string,
   optionsWithVotes: Record<string, number>,
-  ownerId: string // <-- Added ownerId parameter
+  ownerId: string
 ): Poll => {
-  // 1. Create the base poll
   let poll = createPoll(title, category, description, imageUrl);
   
-  // 2. Loop through our dictionary and add every option
   for (const optionText of Object.keys(optionsWithVotes)) {
     poll = addOption(poll, optionText);
   }
 
-  // 3. Calculate total votes
   const totalVotes = Object.values(optionsWithVotes).reduce((sum, votes) => sum + votes, 0);
 
-  // 4. Inject the individual vote counts AND the ownerId
   return {
     ...poll,
-    ownerId, // <-- Overwrite/inject the ownerId here
+    ownerId,
     options: poll.options.map(option => ({
       ...option,
       votes: optionsWithVotes[option.text] || 0
@@ -49,12 +44,8 @@ const buildPollWithVotes = (
   };
 };
 
-// --- EXPORT ALL POLLS ---
 export const getSeededPolls = (): Poll[] => {
   return [
-    // ==========================================
-    // POLLS OWNED BY SOMEONE ELSE ("other-user")
-    // ==========================================
     buildPollWithVotes(
       "Who is the greatest football player of all time?",
       "Sports",
@@ -128,11 +119,6 @@ export const getSeededPolls = (): Poll[] => {
       "other-user"
     ),
 
-    // ==============================================
-    // POLLS OWNED BY THE CURRENT USER ("demo-user")
-    // ==============================================
-    
-    // Poll 6: Category 1 (0-10 interactions), Dominance 1 (0-30% - completely tied)
     buildPollWithVotes(
       "What is your go-to morning beverage?",
       "Lifestyle",
@@ -144,17 +130,16 @@ export const getSeededPolls = (): Poll[] => {
         "Water": 2,
         "Juice": 2,
       },
-      "demo-user" // Matches seeded user ID
+      "demo-user"
     ),
 
-    // Poll 7: Category 2 (11-50 interactions), Dominance 4 (61-80% - strong lead)
     buildPollWithVotes(
       "What is the best season of the year?",
       "General",
       "Which season has the best vibes, weather, and holidays?",
       "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=1000",
       {
-        "Autumn": 24, // 75% dominance
+        "Autumn": 24,
         "Summer": 4,
         "Spring": 3,
         "Winter": 1,
@@ -162,28 +147,26 @@ export const getSeededPolls = (): Poll[] => {
       "demo-user"
     ),
 
-    // Poll 8: Category 3 (51-100 interactions), Dominance 5 (80%+ - total blowout)
     buildPollWithVotes(
       "Are you a dog person or a cat person?",
       "Pets",
       "The classic debate. Pick your side.",
       "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1000",
       {
-        "Dogs": 75, // ~88% dominance
+        "Dogs": 75,
         "Cats": 5,
         "Neither": 5,
       },
       "demo-user"
     ),
 
-    // Poll 9: Category 4 (101-500 interactions), Dominance 2 (31-50% - healthy competition)
     buildPollWithVotes(
       "Which superpower would you choose?",
       "Entertainment",
       "If you could only pick one superpower to have for the rest of your life.",
       "https://images.unsplash.com/photo-1612450371728-6617594fa7a0?auto=format&fit=crop&q=80&w=1000",
       {
-        "Teleportation": 80, // 40% dominance
+        "Teleportation": 80,
         "Flight": 60,
         "Time Travel": 40,
         "Invisibility": 20,
@@ -191,14 +174,13 @@ export const getSeededPolls = (): Poll[] => {
       "demo-user"
     ),
 
-    // Poll 10: Category 5 (500+ interactions), Dominance 3 (51-60% - solid majority)
     buildPollWithVotes(
       "What is the best streaming service right now?",
       "Entertainment",
       "Considering price, original content, and UI, who is winning the streaming wars?",
       "https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&q=80&w=1000",
       {
-        "Netflix": 330, // 55% dominance
+        "Netflix": 330,
         "HBO Max": 150,
         "Hulu": 70,
         "Disney+": 50,

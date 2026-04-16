@@ -1,5 +1,4 @@
-// src/App.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { SidebarLayout } from "./components/SidebarLayout";
 import { FeedPage } from "./pages/FeedPage";
@@ -9,42 +8,32 @@ import { SignUpPage } from "./pages/authentication/SignUpPage";
 import { PollEditPage } from "./pages/polls/PollEditPage";
 import { PollCreatePage } from "./pages/polls/PollCreatePage";
 import { setPreference, trackUserActivity } from "./services/browserMonitoringService";
-import { createMessage } from "./services/messageService";
-import { addOption, createPoll, updatePoll, vote } from "./services/pollService";
-import { useAppState } from "./store/useAppState";
-import {
-  getSeededMarginalityResponses,
-  getSeededMarginalityTests,
-  getSeededPolls,
-  getSeededUser,
-} from "./store/seedData";
-import type { MarginalityTestResponse } from "./domain/MarginalityTest";
+import { getSeededMarginalityResponses,getSeededMarginalityTests,getSeededPolls,getSeededUser } from "./store/seedData";
 import { UserStatsPage } from "./pages/UserStatsPage";
 import { MarginalityTestPage } from "./pages/MarginalityTestPage";
 import { TakeMarginalityTest } from "./pages/marginality/TakeMarginalityTest";
 import { MarginalityTestPage as MarginalityQuestionPage } from "./pages/marginality/MarginalityTestPage";
 import { MarginalityReport } from "./pages/marginality/MarginalityReport";
-import type { NewPollData } from "./components/PollCardCreate";
+import { useGlobalStore } from "./store/useGlobalStore";
 
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    polls,
-    setPolls,
-    messages,
-    setMessages,
-    users,
-    setUsers,
-    userVotes,
-    setUserVotes,
-    currentUserId,
-    setCurrentUserId,
-    marginalityTests,
-    setMarginalityTests,
-    marginalityResponses,
-    setMarginalityResponses,
-  } = useAppState();
+
+  const setPolls = useGlobalStore((state) => state.setPolls);
+  const setUsers = useGlobalStore((state) => state.setUsers);
+  const setCurrentUserId = useGlobalStore((state) => state.setCurrentUserId);
+  const setMarginalityTests = useGlobalStore((state) => state.setMarginalityTests);
+  const setMarginalityResponses = useGlobalStore((state) => state.setMarginalityResponses);
+
+  const polls = useGlobalStore((state) => state.polls);
+  const users = useGlobalStore((state) => state.users);
+  const userVotes = useGlobalStore((state) => state.userVotes);
+  const marginalityTests = useGlobalStore((state) => state.marginalityTests);
+  const marginalityResponses = useGlobalStore((state) => state.marginalityResponses);
+  const currentUserId = useGlobalStore((state) => state.currentUserId);
+
+  const handleSubmitMarginalityResponse = useGlobalStore((state) => state.handleSubmitMarginalityResponse);
 
   const seededUser = useMemo(() => users[0] ?? getSeededUser(), [users]);
   const initialPolls = useMemo(() => polls.length > 0 ? polls : getSeededPolls(), [polls]);
@@ -60,23 +49,11 @@ function App() {
     [initialMarginalityTests, marginalityResponses]
   );
 
-  // Track which poll we are currently editing
-  const [activeEditPollId, setActiveEditPollId] = useState<string>(initialPolls[0].id);
-  const [isCrudDemoRunning, setIsCrudDemoRunning] = useState(false);
-  const crudDemoTimeoutsRef = useRef<number[]>([]);
-
   useEffect(() => {
     if (users.length === 0) setUsers([seededUser]);
     if (!currentUserId) setCurrentUserId(seededUser.id);
 
     if (polls.length === 0) setPolls(initialPolls);
-
-    if (messages.length === 0) {
-      setMessages([
-        createMessage(initialPolls[0].id, seededUser.id, "Messi changed how playmaking and goalscoring can coexist."),
-        createMessage(initialPolls[0].id, seededUser.id, "Ronaldo has one of the strongest longevity cases ever."),
-      ]);
-    }
 
     if (marginalityTests.length === 0) {
       setMarginalityTests(initialMarginalityTests);
@@ -92,13 +69,11 @@ function App() {
     initialPolls,
     marginalityResponses.length,
     marginalityTests.length,
-    messages.length,
     polls.length,
     seededUser,
     setCurrentUserId,
     setMarginalityResponses,
     setMarginalityTests,
-    setMessages,
     setPolls,
     setUsers,
     users.length,
@@ -108,147 +83,6 @@ function App() {
     trackUserActivity("route", location.pathname);
     setPreference("lastVisitedRoute", location.pathname);
   }, [location.pathname]);
-
-  useEffect(() => {
-    return () => {
-      crudDemoTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
-    };
-  }, []);
-
-  const handleUpdatePoll = (pollId: string, updates: Partial<typeof initialPolls[0]>) => {
-    setPolls((currentPolls) =>
-      currentPolls.map((poll) => (poll.id === pollId ? updatePoll(poll, updates) : poll))
-    );
-    trackUserActivity("poll", `update-poll:${pollId}`);
-  };
-
-  const handleDeletePoll = (pollId: string) => {
-    // Filters out the deleted poll and updates the global state
-    setPolls((currentPolls) => currentPolls.filter((poll) => poll.id !== pollId));
-    trackUserActivity("poll", `delete-poll:${pollId}`);
-  };
-
-  const handleCreatePoll = (pollData: NewPollData) => {
-    const ownerId = currentUserId ?? seededUser.id;
-    let nextPoll = createPoll(
-      pollData.title.trim(),
-      "General",
-      pollData.description.trim(),
-      pollData.imageUrl.trim() || "/logo.png"
-    );
-
-    pollData.options.forEach((optionText) => {
-      nextPoll = addOption(nextPoll, optionText.trim(), ownerId);
-    });
-
-    nextPoll = {
-      ...nextPoll,
-      ownerId,
-    };
-
-    setPolls((currentPolls) => [nextPoll, ...currentPolls]);
-    trackUserActivity("poll", `create-poll:${nextPoll.id}`);
-  };
-
-  const handleVote = (pollId: string, optionId: string, userId: string) => {
-    // 1. Find the poll using the ID
-    const poll = polls.find((currentPoll) => currentPoll.id === pollId);
-
-    if (!poll) {
-      return;
-    }
-
-    // 2. We use the userVotes directly from App.tsx's state!
-    const result = vote(poll, optionId, userId, userVotes);
-
-    setPolls((currentPolls) =>
-      currentPolls.map((currentPoll) => (currentPoll.id === pollId ? result.poll : currentPoll))
-    );
-    setUserVotes(result.userVotes);
-    trackUserActivity("poll", `vote:${pollId}:${optionId}`);
-  };
-
-  const handleSubmitMarginalityResponse = (response: MarginalityTestResponse) => {
-    setMarginalityResponses((currentResponses) => {
-      const withoutCurrentUsersResponse = currentResponses.filter(
-        (currentResponse) =>
-          !(currentResponse.testId === response.testId && currentResponse.userId === response.userId)
-      );
-
-      return [...withoutCurrentUsersResponse, response];
-    });
-    trackUserActivity("marginality", `submit-report:${response.testId}`);
-  };
-
-  const handleRunCrudDemo = () => {
-    if (isCrudDemoRunning) {
-      return;
-    }
-
-    setIsCrudDemoRunning(true);
-    trackUserActivity("demo", "start-crud-thread");
-    crudDemoTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
-    crudDemoTimeoutsRef.current = [];
-
-    const ownerId = currentUserId ?? seededUser.id;
-    const demoPollIds: string[] = [];
-
-    const schedule = (delay: number, callback: () => void) => {
-      const timeoutId = window.setTimeout(callback, delay);
-      crudDemoTimeoutsRef.current.push(timeoutId);
-    };
-
-    schedule(0, () => {
-      let demoPoll = createPoll(
-        "Live CRUD Demo Poll",
-        "General",
-        "This poll was created by the dashboard demo thread.",
-        "/logo.png"
-      );
-      demoPoll = addOption(addOption(demoPoll, "Create works", ownerId), "Delete works", ownerId);
-      demoPoll = { ...demoPoll, ownerId };
-      demoPollIds.push(demoPoll.id);
-      setPolls((currentPolls) => [demoPoll, ...currentPolls]);
-      trackUserActivity("demo", `create:${demoPoll.id}`);
-    });
-
-    schedule(1400, () => {
-      let secondDemoPoll = createPoll(
-        "Second Demo Poll",
-        "General",
-        "The demo thread added another entity to the list.",
-        "/logo.png"
-      );
-      secondDemoPoll = addOption(addOption(secondDemoPoll, "Visible add", ownerId), "Visible delete", ownerId);
-      secondDemoPoll = { ...secondDemoPoll, ownerId };
-      demoPollIds.push(secondDemoPoll.id);
-      setPolls((currentPolls) => [secondDemoPoll, ...currentPolls]);
-      trackUserActivity("demo", `create:${secondDemoPoll.id}`);
-    });
-
-    schedule(2800, () => {
-      const firstDemoPollId = demoPollIds[0];
-
-      if (firstDemoPollId) {
-        setPolls((currentPolls) => currentPolls.filter((poll) => poll.id !== firstDemoPollId));
-        trackUserActivity("demo", `delete:${firstDemoPollId}`);
-      }
-    });
-
-    schedule(4200, () => {
-      const secondDemoPollId = demoPollIds[1];
-
-      if (secondDemoPollId) {
-        setPolls((currentPolls) => currentPolls.filter((poll) => poll.id !== secondDemoPollId));
-        trackUserActivity("demo", `delete:${secondDemoPollId}`);
-      }
-
-      setIsCrudDemoRunning(false);
-      crudDemoTimeoutsRef.current = [];
-      trackUserActivity("demo", "finish-crud-thread");
-    });
-  };
-  
 
   return (
     <Routes>
@@ -294,7 +128,6 @@ function App() {
                 polls={polls}
                 currentUserId={currentUserId ?? seededUser.id}
                 userVotes={userVotes}
-                onVote={handleVote}
               />
             </div>
           }
@@ -305,18 +138,9 @@ function App() {
             <div style={{ minHeight: "100vh" }}>
               <UserStatsPage
                 polls={polls}
-                onAdd={() => navigate("/create-poll")}
-                onUpdate={(id: string) => {
-                  setActiveEditPollId(id);
-                  navigate("/edit");
-                }}
-                onDelete={handleDeletePoll}
-                // Added the 3 missing props!
+                setPolls={setPolls}
                 currentUserId={currentUserId ?? seededUser.id}
                 userVotes={userVotes}
-                onVote={handleVote}
-                onRunCrudDemo={handleRunCrudDemo}
-                isCrudDemoRunning={isCrudDemoRunning}
               />
             </div>
           }
@@ -370,19 +194,15 @@ function App() {
           path="/create-poll"
           element={
             <div style={{ minHeight: "100vh" }}>
-              <PollCreatePage onCreatePoll={handleCreatePoll} />
+              <PollCreatePage />
             </div>
           }
         />
         <Route
-          path="/edit"
+          path="/edit/:pollId" 
           element={
             <div style={{ minHeight: "100vh" }}>
-              <PollEditPage
-                pollId={activeEditPollId}
-                polls={polls.length > 0 ? polls : initialPolls}
-                onUpdatePoll={handleUpdatePoll}
-              />
+              <PollEditPage /> 
             </div>
           }
         />

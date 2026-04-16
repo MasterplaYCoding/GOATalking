@@ -291,14 +291,13 @@ export function PollCard({
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "space-around",
           width: "100%",
           boxSizing: "border-box",
           marginTop: "3cqw",
           flexShrink: 0
         }}
       >
-        <StatsComp span_icon="chat" text={poll.interactionCount.toString()} />
         <StatsComp span_icon="campaign" text={poll.interactionCount.toString()} />
         <StatsComp span_icon="today" text={poll.dateCreated.toLocaleDateString()} />
       </div>
