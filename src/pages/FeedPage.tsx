@@ -1,10 +1,46 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { PollCard } from "../components/PollCard";
 import type { Poll } from "../domain/Poll";
 import { useResponsive } from "../hooks/useResponsive";
 import type { UserVotes } from "../domain/User";
 import { useGlobalStore } from "../store/useGlobalStore";
+import { useQuery } from '@apollo/client/react';
+import { gql } from '@apollo/client';
 
+type FeedPollQueryNode = Omit<Poll, "dateCreated"> & { dateCreated: string };
+type GetFeedPollsResponse = {
+  getPolls: {
+    data: FeedPollQueryNode[];
+    meta: {
+      totalPages: number;
+    };
+  };
+};
+
+const GET_POLLS = gql`
+  query GetFeedPolls($page: Int!, $limit: Int!) {
+    getPolls(page: $page, limit: $limit) {
+      data {
+        id
+        title
+        category
+        description
+        imageUrl
+        ownerId
+        dateCreated
+        interactionCount
+        options {
+          id
+          text
+          votes
+        }
+      }
+      meta {
+        totalPages
+      }
+    }
+  }
+`;
 
 type FeedPageProps = {
   polls: Poll[];
@@ -61,6 +97,42 @@ export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
   const { isMobile, isTablet } = useResponsive();
 
   const handleVote = useGlobalStore((state) => state.handleVote);
+  const setPolls = useGlobalStore((state) => state.setPolls);
+
+  const [page, setPage] = useState(1);
+  const observerTarget = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const { loading, data } = useQuery<GetFeedPollsResponse>(GET_POLLS, {
+    variables: { page, limit: 4 },
+  });
+
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+
+    const fetchedPolls = data.getPolls.data;
+
+    setPolls((current: Poll[]) => {
+      const existingIds = new Set(current.map((poll) => poll.id));
+      const uniqueNew = fetchedPolls
+        .filter((poll) => !existingIds.has(poll.id))
+        .map((poll) => ({ ...poll, dateCreated: new Date(poll.dateCreated) }));
+
+      return [...current, ...uniqueNew];
+    });
+  }, [data, setPolls]);
+
+  const hasMore = useMemo(() => {
+    const totalPages = data?.getPolls.meta.totalPages;
+
+    if (!totalPages) {
+      return true;
+    }
+
+    return page < totalPages;
+  }, [data, page]);
 
   const feedPolls = useMemo(
     () =>
@@ -73,10 +145,36 @@ export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
     [polls, currentUserId, searchQuery]
   );
 
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const target = observerTarget.current;
+
+    if (!container || !target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        console.log(`Sensor check! isIntersecting: ${entries[0].isIntersecting} | visibility: ${entries[0].intersectionRatio}`);
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          console.log("Sensor passed safety checks! Fetching next page...");
+          setPage((prev) => prev + 1);
+        }
+      },
+      { 
+        root: container, 
+        rootMargin: "600px", 
+        threshold: 0.1 
+      }
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [hasMore, loading, feedPolls.length]);
+
   return (
     <div
       style={{
-        minHeight: "100vh",
+        height: "100vh",
         display: "flex",
         justifyContent: "center",
         overflow: "hidden",
@@ -90,6 +188,7 @@ export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
           gap: isMobile ? "20px" : "40px",
           width: "100%",
           maxWidth: "1200px",
+          height: "100%",
         }}
       >
         <div
@@ -120,6 +219,7 @@ export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
           }}
         >
           <div
+            ref={scrollContainerRef}
             style={{
               flex: 1,
               overflowY: "auto",
@@ -154,6 +254,18 @@ export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
                   />
                 </div>
               ))
+            )}
+
+            {hasMore && feedPolls.length > 0 && (
+              <div ref={observerTarget} style={{ height: "40px", display: "flex", justifyContent: "center", alignItems: "center", marginTop: "20px" }}>
+                {loading && <span style={{ color: "rgba(255,255,255,0.5)" }}>Loading more polls...</span>}
+              </div>
+            )}
+            
+            {!hasMore && feedPolls.length > 0 && (
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", padding: "20px 0 40px" }}>
+                You've reached the end of the feed!
+              </div>
             )}
           </div>
         </div>

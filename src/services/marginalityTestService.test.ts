@@ -19,18 +19,17 @@ describe("marginalityTestService", () => {
       [
         { key: "age", label: "Age", inputType: "number", required: true, min: 13, max: 100 },
         { key: "country", label: "Country", inputType: "text", required: true },
+        { key: "ageGroup", label: "Generation", inputType: "select", isDerived: true, derivedFromKey: "age", derivedStrategy: "ageGroupFromAge" },
       ]
     );
 
     const [firstQuestion, secondQuestion] = test.questions;
     const firstResponse = createMarginalityResponse(
-      test.id,
+      test,
       "user-1",
       {
         age: 24,
-        ageGroup: getAgeGroupFromAge(24),
         country: "Romania",
-        footballWatchingLevel: "Weekly",
       },
       [
         { questionId: firstQuestion.id, agreement: 70 },
@@ -38,13 +37,11 @@ describe("marginalityTestService", () => {
       ]
     );
     const secondResponse = createMarginalityResponse(
-      test.id,
+      test,
       "user-2",
       {
         age: 36,
-        ageGroup: getAgeGroupFromAge(36),
         country: "Spain",
-        footballWatchingLevel: "Obsessed",
       },
       [
         { questionId: firstQuestion.id, agreement: 50 },
@@ -77,13 +74,11 @@ describe("marginalityTestService", () => {
       []
     );
     const soloResponse = createMarginalityResponse(
-      soloTest.id,
+      soloTest,
       "solo-user",
       {
         age: 66,
-        ageGroup: "Boomers",
         country: "Germany",
-        footballWatchingLevel: "Casual",
       },
       [{ questionId: soloTest.questions[0].id, agreement: 150 }]
     );

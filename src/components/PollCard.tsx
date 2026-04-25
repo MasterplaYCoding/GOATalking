@@ -3,6 +3,22 @@ import type { Poll } from "../domain/Poll";
 import { theme } from "../theme/theme";
 import { getCurrentStandings } from "../services/pollService";
 import type { UserVotes } from "../domain/User";
+import { gql } from '@apollo/client';
+import { useMutation } from '@apollo/client/react';
+
+
+const VOTE_MUTATION = gql`
+  mutation VoteOnPoll($pollId: ID!, $optionId: ID!) {
+    votePoll(pollId: $pollId, optionId: $optionId) {
+      id
+      interactionCount
+      options {
+        id
+        votes
+      }
+    }
+  }
+`;
 
 type PollCardProps = {
   pollId: string;
@@ -50,6 +66,10 @@ const PollResults = ({
   const [currentPage, setCurrentPage] = useState(0);
   const ITEMS_PER_PAGE = 5;
 
+  const [submitVote, { loading: isVoting }] = useMutation(VOTE_MUTATION, {
+    onError: (err: Error) => console.error("Failed to vote:", err.message), 
+  });
+
   const standings = getCurrentStandings(poll);
   const totalPages = Math.ceil(standings.length / ITEMS_PER_PAGE);
 
@@ -58,47 +78,51 @@ const PollResults = ({
     (currentPage + 1) * ITEMS_PER_PAGE
   );
 
-  // Find out which option the user has voted for in this poll
   const selectedOptionId = currentUserId ? userVotes?.[poll.id]?.[currentUserId] : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2cqw", width: "100%", flex: 1 }}>
       
-      {/* Options Container */}
       <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-evenly", width: "100%" }}>
         {currentOptions.map(([option, percentage]) => {
           
-          // Boolean check to see if this is the highlighted option
           const isSelected = option.id === selectedOptionId;
 
           return (
             <div
               key={option.id}
               onClick={() => {
-                if (currentUserId) {
-                  onVote(poll.id, option.id, currentUserId);
-                } else {
+                if (!currentUserId) {
                   console.warn("User must be logged in to vote.");
+                  return;
                 }
+                
+                if (isVoting) return;
+
+                submitVote({
+                  variables: {
+                    pollId: poll.id,
+                    optionId: option.id
+                  }
+                });
+
+                onVote(poll.id, option.id, currentUserId);
               }}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "3cqw",
                 width: "100%",
-                cursor: "pointer",
-                
-                // --- HIGHLIGHT STYLING ---
-                // We use your theme colors here!
+                cursor: isVoting ? "wait" : "pointer", 
                 backgroundColor: isSelected ? theme.colors?.primary || "#1F3D3A" : "transparent",
                 border: isSelected 
                   ? `2px solid ${theme.colors?.secondary || "#47C7AA"}` 
-                  : "2px solid transparent", // Keep an invisible border so the layout doesn't jump
-                
-                padding: "1.5cqw 2cqw", // Add a little padding so the text doesn't touch the new border
+                  : "2px solid transparent",
+                padding: "1.5cqw 2cqw",
                 borderRadius: "12px",
                 boxSizing: "border-box",
                 transition: "all 0.2s ease-in-out",
+                opacity: isVoting && !isSelected ? 0.7 : 1, 
               }}
             >
               <span

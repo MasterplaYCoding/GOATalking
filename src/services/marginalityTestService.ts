@@ -2,9 +2,10 @@ import { nanoid } from "nanoid";
 import type {
   AgeGroupKey,
   GroupAverageResult,
+  MarginalityCategoryDefinition,
+  MarginalityCategoryValue,
+  MarginalityCategoryValues,
   MarginalityDistanceReport,
-  MarginalityProfileFieldDefinition,
-  MarginalityProfile,
   MarginalityQuestion,
   MarginalityTest,
   MarginalityTestResponse,
@@ -12,14 +13,14 @@ import type {
 } from "../domain/MarginalityTest";
 import { AGE_GROUP_DETAILS } from "../domain/MarginalityTest";
 
-type GroupableKey = keyof MarginalityProfile;
+type GroupableKey = string;
 
 export function createMarginalityTest(
   title: string,
   topic: string,
   description: string,
   questionTexts: string[],
-  profileFields: MarginalityProfileFieldDefinition[]
+  categoryDefinitions: MarginalityCategoryDefinition[]
 ): MarginalityTest {
   const questions: MarginalityQuestion[] = questionTexts.map((text) => ({
     id: nanoid(),
@@ -31,28 +32,53 @@ export function createMarginalityTest(
     title,
     topic,
     description,
-    profileFields,
+    categoryDefinitions,
     questions,
     createdAt: new Date(),
   };
 }
 
 export function createMarginalityResponse(
-  testId: string,
+  test: MarginalityTest,
   userId: string,
-  profile: MarginalityProfile,
+  categoryValues: MarginalityCategoryValues,
   votes: QuestionAgreementVote[]
 ): MarginalityTestResponse {
   return {
     id: nanoid(),
-    testId,
+    testId: test.id,
     userId,
-    profile,
+    categoryValues: applyDerivedCategoryValues(test.categoryDefinitions, categoryValues),
     votes: votes.map((vote) => ({
       ...vote,
       agreement: clampAgreement(vote.agreement),
     })),
     submittedAt: new Date(),
+  };
+}
+
+export function normalizeMarginalityResponse(
+  test: MarginalityTest,
+  response: Omit<MarginalityTestResponse, "submittedAt" | "categoryValues" | "votes"> & {
+    submittedAt: string | Date;
+    categoryValues?: Record<string, unknown>;
+    votes?: Array<{ questionId: string; agreement: number | string }>;
+    profile?: Record<string, unknown>;
+  }
+): MarginalityTestResponse {
+  const rawCategoryValues = response.categoryValues ?? response.profile ?? {};
+  const normalizedCategoryValues = normalizeCategoryValues(test.categoryDefinitions, rawCategoryValues);
+
+  return {
+    id: response.id,
+    testId: response.testId,
+    userId: response.userId,
+    categoryValues: applyDerivedCategoryValues(test.categoryDefinitions, normalizedCategoryValues),
+    votes: (response.votes ?? []).map((vote) => ({
+      questionId: vote.questionId,
+      agreement: clampAgreement(Number(vote.agreement)),
+    })),
+    submittedAt: new Date(response.submittedAt),
   };
 }
 
@@ -81,12 +107,12 @@ export function getQuestionAverageByGroup(
 
   responses.forEach((response) => {
     const vote = response.votes.find((currentVote) => currentVote.questionId === questionId);
+    const label = normalizeCategoryLabel(response.categoryValues[groupKey]);
 
-    if (!vote) {
+    if (!vote || !label) {
       return;
     }
 
-    const label = String(response.profile[groupKey]);
     const bucket = grouped.get(label) ?? [];
     bucket.push(vote.agreement);
     grouped.set(label, bucket);
@@ -117,7 +143,12 @@ export function getOverallAverageByGroup(
   const grouped = new Map<string, number[]>();
 
   responses.forEach((response) => {
-    const label = String(response.profile[groupKey]);
+    const label = normalizeCategoryLabel(response.categoryValues[groupKey]);
+
+    if (!label) {
+      return;
+    }
+
     const bucket = grouped.get(label) ?? [];
     bucket.push(...response.votes.map((vote) => vote.agreement));
     grouped.set(label, bucket);
@@ -148,6 +179,92 @@ export function getDistanceFromOtherGroups(
     overallAverageDistance: average(distancesByGroup.map((item) => item.averageDistance)),
     distancesByGroup,
   };
+}
+
+export function getVisibleInputCategoryDefinitions(
+  test: MarginalityTest
+): MarginalityCategoryDefinition[] {
+  return test.categoryDefinitions.filter((definition) => !definition.isDerived);
+}
+
+export function getQuestionStatsCategoryDefinitions(
+  test: MarginalityTest
+): MarginalityCategoryDefinition[] {
+  return test.categoryDefinitions.filter((definition) => definition.includeInQuestionStats);
+}
+
+export function getReportCategoryDefinitions(
+  test: MarginalityTest
+): MarginalityCategoryDefinition[] {
+  return test.categoryDefinitions.filter((definition) => definition.includeInReport);
+}
+
+export function getCategoryDefinitionByKey(
+  test: MarginalityTest,
+  key: string
+): MarginalityCategoryDefinition | undefined {
+  return test.categoryDefinitions.find((definition) => definition.key === key);
+}
+
+function applyDerivedCategoryValues(
+  categoryDefinitions: MarginalityCategoryDefinition[],
+  rawCategoryValues: MarginalityCategoryValues
+): MarginalityCategoryValues {
+  const normalizedValues: MarginalityCategoryValues = { ...rawCategoryValues };
+
+  categoryDefinitions.forEach((definition) => {
+    if (!definition.isDerived || !definition.derivedFromKey) {
+      return;
+    }
+
+    const sourceValue = normalizedValues[definition.derivedFromKey];
+
+    if (definition.derivedStrategy === "ageGroupFromAge" && typeof sourceValue === "number") {
+      normalizedValues[definition.key] = getAgeGroupFromAge(sourceValue);
+    }
+  });
+
+  return normalizedValues;
+}
+
+function normalizeCategoryValues(
+  categoryDefinitions: MarginalityCategoryDefinition[],
+  rawCategoryValues: Record<string, unknown>
+): MarginalityCategoryValues {
+  const normalizedValues: MarginalityCategoryValues = {};
+
+  Object.entries(rawCategoryValues).forEach(([key, value]) => {
+    const definition = categoryDefinitions.find((item) => item.key === key);
+
+    if (definition?.inputType === "number") {
+      const numericValue = Number(value);
+
+      if (!Number.isNaN(numericValue)) {
+        normalizedValues[key] = numericValue;
+      }
+
+      return;
+    }
+
+    if (typeof value === "string" || typeof value === "number") {
+      normalizedValues[key] = value;
+    }
+  });
+
+  return normalizedValues;
+}
+
+function normalizeCategoryLabel(value: MarginalityCategoryValue | undefined): string | undefined {
+  if (typeof value === "number") {
+    return String(value);
+  }
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim();
+    return normalizedValue || undefined;
+  }
+
+  return undefined;
 }
 
 function average(values: number[]): number {

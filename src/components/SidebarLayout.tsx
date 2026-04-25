@@ -6,6 +6,7 @@ import { theme } from "../theme/theme";
 const navItems = [
   { label: "Feed", to: "/feed", icon: "F" },
   { label: "Your Polls", to: "/your-polls", icon: "Y" },
+  { label: "Lists", to: "/lists", icon: "L" },
   { label: "Marginality Test", to: "/marginality-test", icon: "M" },
 ];
 

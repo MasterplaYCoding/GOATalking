@@ -15,4 +15,5 @@ export interface Poll {
   dateCreated: Date;
   interactionCount: number;
   ownerId?: string;
+  listId?: string | null;
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   AGE_GROUP_DETAILS,
+  type MarginalityCategoryDefinition,
   type AgeGroupKey,
   type GroupAverageResult,
   type MarginalityQuestion,
@@ -9,6 +10,7 @@ import {
   type MarginalityTestResponse,
 } from "../../domain/MarginalityTest";
 import {
+  getQuestionStatsCategoryDefinitions,
   getQuestionAverageByGroup,
   getQuestionOverallAverage,
   getResponsesForTest,
@@ -74,21 +76,40 @@ function MarginalityQuestionScreen({
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   const testResponses = useMemo(() => getResponsesForTest(responses, test.id), [responses, test.id]);
+  const statsCategoryDefinitions = useMemo(() => getQuestionStatsCategoryDefinitions(test), [test]);
+  const ageGroupDefinition = useMemo(
+    () => statsCategoryDefinitions.find((definition) => definition.key === "ageGroup"),
+    [statsCategoryDefinitions]
+  );
+  const additionalStatsDefinitions = useMemo(
+    () => statsCategoryDefinitions.filter((definition) => definition.key !== "ageGroup").slice(0, 2),
+    [statsCategoryDefinitions]
+  );
   const overallAverage = useMemo(
     () => getQuestionOverallAverage(testResponses, question.id),
     [question.id, testResponses]
   );
   const ageGroupAverages = useMemo(
-    () => getQuestionAverageByGroup(testResponses, question.id, "ageGroup"),
-    [question.id, testResponses]
+    () =>
+      ageGroupDefinition
+        ? getQuestionAverageByGroup(testResponses, question.id, ageGroupDefinition.key)
+        : [],
+    [ageGroupDefinition, question.id, testResponses]
   );
-  const countryAverages = useMemo(
-    () => getQuestionAverageByGroup(testResponses, question.id, "country"),
-    [question.id, testResponses]
-  );
-  const watchingAverages = useMemo(
-    () => getQuestionAverageByGroup(testResponses, question.id, "footballWatchingLevel"),
-    [question.id, testResponses]
+  const additionalInsights = useMemo(
+    () =>
+      additionalStatsDefinitions.map((definition) => {
+        const averages = getQuestionAverageByGroup(testResponses, question.id, definition.key);
+        const currentValue = draftState.categoryValues[definition.key];
+
+        return buildSingleGroupInsight(
+          definition,
+          averages,
+          currentValue,
+          sliderValue
+        );
+      }),
+    [additionalStatsDefinitions, draftState.categoryValues, question.id, sliderValue, testResponses]
   );
 
   const summary = useMemo(
@@ -96,22 +117,15 @@ function MarginalityQuestionScreen({
     [overallAverage, sliderValue]
   );
   const ageInsights = useMemo(
-    () => buildAgeInsights(ageGroupAverages, sliderValue, draftState.profile.ageGroup),
-    [ageGroupAverages, draftState.profile.ageGroup, sliderValue]
-  );
-  const countryInsight = useMemo(
-    () => buildSingleGroupInsight(countryAverages, draftState.profile.country, sliderValue, "country"),
-    [countryAverages, draftState.profile.country, sliderValue]
-  );
-  const watchingInsight = useMemo(
     () =>
-      buildSingleGroupInsight(
-        watchingAverages,
-        draftState.profile.footballWatchingLevel,
-        sliderValue,
-        "watching habit"
-      ),
-    [draftState.profile.footballWatchingLevel, sliderValue, watchingAverages]
+      ageGroupDefinition
+        ? buildAgeInsights(
+            ageGroupAverages,
+            sliderValue,
+            String(draftState.categoryValues[ageGroupDefinition.key] ?? "GenZ") as AgeGroupKey
+          )
+        : null,
+    [ageGroupAverages, ageGroupDefinition, draftState.categoryValues, sliderValue]
   );
 
   const isLastQuestion = currentIndex === test.questions.length - 1;
@@ -126,7 +140,7 @@ function MarginalityQuestionScreen({
       };
 
       const nextState: MarginalityDraftState = {
-        profile: draftState.profile,
+        categoryValues: draftState.categoryValues,
         answers: nextAnswers,
       };
 
@@ -224,17 +238,24 @@ function MarginalityQuestionScreen({
               The current overall average is <strong>{formatPercent(overallAverage)}</strong>, so you are{" "}
               <strong>{formatSignedDistance(sliderValue - overallAverage)}</strong> away from the crowd on this question.
             </p>
-            <Divider />
-            <p style={statsTextStyle}>
-              Your generation is <strong>{ageInsights.currentGroupLabel}</strong> at <strong>{formatPercent(ageInsights.currentGroupAverage)}</strong>.
-            </p>
-            <p style={statsTextStyle}>
-              You are closest to <strong>{ageInsights.closestGroupLabel}</strong> and furthest from <strong>{ageInsights.furthestGroupLabel}</strong>.
-            </p>
-            <p style={statsTextStyle}>{ageInsights.groupsLine}</p>
-            <Divider />
-            <p style={statsTextStyle}>{countryInsight}</p>
-            <p style={statsTextStyle}>{watchingInsight}</p>
+            {ageInsights ? (
+              <>
+                <Divider />
+                <p style={statsTextStyle}>
+                  Your generation is <strong>{ageInsights.currentGroupLabel}</strong> at <strong>{formatPercent(ageInsights.currentGroupAverage)}</strong>.
+                </p>
+                <p style={statsTextStyle}>
+                  You are closest to <strong>{ageInsights.closestGroupLabel}</strong> and furthest from <strong>{ageInsights.furthestGroupLabel}</strong>.
+                </p>
+                <p style={statsTextStyle}>{ageInsights.groupsLine}</p>
+              </>
+            ) : null}
+            {additionalInsights.length > 0 ? <Divider /> : null}
+            {additionalInsights.map((insight) => (
+              <p key={insight.definition.key} style={statsTextStyle}>
+                {insight.text}
+              </p>
+            ))}
           </div>
         )}
 
@@ -400,23 +421,29 @@ function MarginalityQuestionScreen({
           The current overall average is <strong>{formatPercent(overallAverage)}</strong>, so you are{" "}
           <strong>{formatSignedDistance(sliderValue - overallAverage)}</strong> away from the crowd on this question.
         </p>
+        {ageInsights ? (
+          <>
+            <Divider />
 
-        <Divider />
+            <p style={statsTextStyle}>
+              Your generation is <strong>{ageInsights.currentGroupLabel}</strong> at{" "}
+              <strong>{formatPercent(ageInsights.currentGroupAverage)}</strong>.
+            </p>
+            <p style={statsTextStyle}>
+              You are closest to <strong>{ageInsights.closestGroupLabel}</strong> and furthest from{" "}
+              <strong>{ageInsights.furthestGroupLabel}</strong>.
+            </p>
+            <p style={statsTextStyle}>{ageInsights.groupsLine}</p>
+          </>
+        ) : null}
 
-        <p style={statsTextStyle}>
-          Your generation is <strong>{ageInsights.currentGroupLabel}</strong> at{" "}
-          <strong>{formatPercent(ageInsights.currentGroupAverage)}</strong>.
-        </p>
-        <p style={statsTextStyle}>
-          You are closest to <strong>{ageInsights.closestGroupLabel}</strong> and furthest from{" "}
-          <strong>{ageInsights.furthestGroupLabel}</strong>.
-        </p>
-        <p style={statsTextStyle}>{ageInsights.groupsLine}</p>
+        {additionalInsights.length > 0 ? <Divider /> : null}
 
-        <Divider />
-
-        <p style={statsTextStyle}>{countryInsight}</p>
-        <p style={statsTextStyle}>{watchingInsight}</p>
+        {additionalInsights.map((insight) => (
+          <p key={insight.definition.key} style={statsTextStyle}>
+            {insight.text}
+          </p>
+        ))}
       </div>
 
       <div
@@ -635,25 +662,45 @@ function buildAgeInsights(
 }
 
 function buildSingleGroupInsight(
+  definition: MarginalityCategoryDefinition,
   groups: GroupAverageResult[],
-  currentLabel: string,
-  sliderValue: number,
-  groupName: string
-): string {
+  currentValue: string | number | undefined,
+  sliderValue: number
+): { definition: MarginalityCategoryDefinition; text: string } {
+  const currentLabel =
+    typeof currentValue === "number"
+      ? String(currentValue)
+      : typeof currentValue === "string"
+        ? currentValue.trim()
+        : "";
+
+  if (!currentLabel) {
+    return {
+      definition,
+      text: `There is not enough ${definition.label.toLowerCase()} data yet to compare your answer.`,
+    };
+  }
+
   const matchingGroup = groups.find(
     (group) => group.label.toLowerCase() === currentLabel.toLowerCase()
   );
 
   if (!matchingGroup) {
-    return `There is not enough ${groupName} data yet to compare your answer.`;
+    return {
+      definition,
+      text: `There is not enough ${definition.label.toLowerCase()} data yet to compare your answer.`,
+    };
   }
 
   const difference = sliderValue - matchingGroup.averageAgreement;
   const direction = difference >= 0 ? "hotter" : "colder";
 
-  return `${currentLabel} currently averages ${formatPercent(
-    matchingGroup.averageAgreement
-  )}, so you are ${Math.abs(difference).toFixed(0)} points ${direction} than that group.`;
+  return {
+    definition,
+    text: `${definition.label}: ${currentLabel} currently averages ${formatPercent(
+      matchingGroup.averageAgreement
+    )}, so you are ${Math.abs(difference).toFixed(0)} points ${direction} than that group.`,
+  };
 }
 
 function agreementTone(value: number): string {

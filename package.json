@@ -13,6 +13,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@apollo/client": "^4.1.7",
+    "graphql": "^16.13.2",
     "nanoid": "^5.1.7",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

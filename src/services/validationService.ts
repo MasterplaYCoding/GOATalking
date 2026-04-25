@@ -1,4 +1,4 @@
-import type { MarginalityProfileFieldDefinition } from "../domain/MarginalityTest";
+import type { MarginalityCategoryDefinition } from "../domain/MarginalityTest";
 
 export type ValidationErrors<T extends string> = Partial<Record<T, string>>;
 
@@ -125,7 +125,7 @@ export function validateSignUpInput(input: {
 }
 
 export function validateDynamicProfileValues(
-  fields: MarginalityProfileFieldDefinition[],
+  fields: MarginalityCategoryDefinition[],
   values: Record<string, string>
 ): Record<string, string> {
   const errors: Record<string, string> = {};

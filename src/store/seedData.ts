@@ -1,11 +1,10 @@
 import { addOption, createPoll } from "../services/pollService";
 import {
-  type MarginalityProfileFieldDefinition,
+  type MarginalityCategoryDefinition,
   type MarginalityTest,
   type MarginalityTestResponse,
 } from "../domain/MarginalityTest";
 import { createMarginalityResponse, createMarginalityTest } from "../services/marginalityTestService";
-import { getAgeGroupFromAge } from "../services/marginalityTestService";
 import type { Poll } from "../domain/Poll";
 import type { User } from "../domain/User";
 
@@ -203,7 +202,7 @@ const footballMarginalityQuestionTexts = [
   "Football debates online are more tribal than analytical.",
 ];
 
-const footballProfileFields: MarginalityProfileFieldDefinition[] = [
+const footballCategoryDefinitions: MarginalityCategoryDefinition[] = [
   {
     key: "age",
     label: "Age",
@@ -212,6 +211,18 @@ const footballProfileFields: MarginalityProfileFieldDefinition[] = [
     min: 13,
     max: 100,
     placeholder: "e.g. 27",
+    includeInReport: false,
+    includeInQuestionStats: false,
+  },
+  {
+    key: "ageGroup",
+    label: "Generation",
+    inputType: "select",
+    isDerived: true,
+    derivedFromKey: "age",
+    derivedStrategy: "ageGroupFromAge",
+    includeInQuestionStats: true,
+    includeInReport: true,
   },
   {
     key: "country",
@@ -219,6 +230,8 @@ const footballProfileFields: MarginalityProfileFieldDefinition[] = [
     inputType: "text",
     required: true,
     placeholder: "e.g. Romania",
+    includeInQuestionStats: true,
+    includeInReport: true,
   },
   {
     key: "footballWatchingLevel",
@@ -226,6 +239,8 @@ const footballProfileFields: MarginalityProfileFieldDefinition[] = [
     inputType: "select",
     required: true,
     options: ["Rarely", "Casual", "Weekly", "Obsessed"],
+    includeInQuestionStats: true,
+    includeInReport: true,
   },
   {
     key: "favoriteClub",
@@ -233,6 +248,8 @@ const footballProfileFields: MarginalityProfileFieldDefinition[] = [
     inputType: "text",
     required: false,
     placeholder: "Optional",
+    includeInQuestionStats: false,
+    includeInReport: true,
   },
 ];
 
@@ -242,7 +259,7 @@ export const getSeededMarginalityTests = (): MarginalityTest[] => {
     "Football",
     "Measure how your football opinions compare with supporters from different age groups, countries, and viewing habits.",
     footballMarginalityQuestionTexts,
-    footballProfileFields
+    footballCategoryDefinitions
   );
 
   return [
@@ -276,11 +293,10 @@ export const getSeededMarginalityResponses = (
 
   return [
     createMarginalityResponse(
-      footballTest.id,
+      footballTest,
       "demo-user",
       {
         age: 31,
-        ageGroup: getAgeGroupFromAge(31),
         country: "Romania",
         footballWatchingLevel: "Weekly",
         favoriteClub: "Barcelona",
@@ -288,11 +304,10 @@ export const getSeededMarginalityResponses = (
       buildVotes([82, 68, 90, 74, 40, 63, 79, 58, 25, 88])
     ),
     createMarginalityResponse(
-      footballTest.id,
+      footballTest,
       "user-spain-1",
       {
         age: 24,
-        ageGroup: getAgeGroupFromAge(24),
         country: "Spain",
         footballWatchingLevel: "Obsessed",
         favoriteClub: "Real Madrid",
@@ -300,11 +315,10 @@ export const getSeededMarginalityResponses = (
       buildVotes([51, 44, 67, 58, 35, 49, 72, 36, 19, 84])
     ),
     createMarginalityResponse(
-      footballTest.id,
+      footballTest,
       "user-england-1",
       {
         age: 49,
-        ageGroup: getAgeGroupFromAge(49),
         country: "England",
         footballWatchingLevel: "Weekly",
         favoriteClub: "Liverpool",
@@ -312,22 +326,20 @@ export const getSeededMarginalityResponses = (
       buildVotes([76, 83, 63, 71, 48, 55, 61, 64, 47, 67])
     ),
     createMarginalityResponse(
-      footballTest.id,
+      footballTest,
       "user-germany-1",
       {
         age: 66,
-        ageGroup: getAgeGroupFromAge(66),
         country: "Germany",
         footballWatchingLevel: "Casual",
       },
       buildVotes([69, 72, 52, 65, 54, 60, 57, 71, 59, 46])
     ),
     createMarginalityResponse(
-      footballTest.id,
+      footballTest,
       "user-argentina-1",
       {
         age: 36,
-        ageGroup: getAgeGroupFromAge(36),
         country: "Argentina",
         footballWatchingLevel: "Obsessed",
         favoriteClub: "River Plate",

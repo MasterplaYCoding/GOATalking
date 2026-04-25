@@ -4,10 +4,15 @@ import youImage from "../../assets/you.png";
 import {
   AGE_GROUP_DETAILS,
   type AgeGroupKey,
+  type MarginalityCategoryDefinition,
   type MarginalityTest,
   type MarginalityTestResponse,
 } from "../../domain/MarginalityTest";
-import { createMarginalityResponse, getDistanceFromOtherGroups } from "../../services/marginalityTestService";
+import {
+  createMarginalityResponse,
+  getDistanceFromOtherGroups,
+  getReportCategoryDefinitions,
+} from "../../services/marginalityTestService";
 import { useResponsive } from "../../hooks/useResponsive";
 import type { MarginalityDraftState } from "./flowTypes";
 
@@ -32,6 +37,10 @@ export function MarginalityReport({
   const draftState = location.state as MarginalityDraftState | undefined;
 
   const hasSubmitted = useRef(false);
+  const reportCategoryDefinitions = useMemo(
+    () => (test ? getReportCategoryDefinitions(test) : []),
+    [test]
+  );
 
   const draftResponse = useMemo(() => {
     if (!test || !draftState) {
@@ -39,9 +48,9 @@ export function MarginalityReport({
     }
 
     return createMarginalityResponse(
-      test.id,
+      test,
       currentUserId,
-      draftState.profile,
+      draftState.categoryValues,
       Object.entries(draftState.answers).map(([questionId, agreement]) => ({
         questionId,
         agreement,
@@ -60,30 +69,39 @@ export function MarginalityReport({
     return <CenteredMessage message="Marginality report unavailable. Please retake the test." />;
   }
 
-  const ageReport = getDistanceFromOtherGroups(draftResponse, responses, "ageGroup");
-  const countryReport = getDistanceFromOtherGroups(draftResponse, responses, "country");
-  const watchingReport = getDistanceFromOtherGroups(draftResponse, responses, "footballWatchingLevel");
-  const favoriteClubReport = draftState.profile.favoriteClub
-    ? getDistanceFromOtherGroups(draftResponse, responses, "favoriteClub")
-    : null;
+  const ageDefinition = reportCategoryDefinitions.find((definition) => definition.key === "ageGroup");
+  const nonAgeReportDefinitions = reportCategoryDefinitions.filter(
+    (definition) => definition.key !== "ageGroup"
+  );
+  const ageReport = ageDefinition
+    ? getDistanceFromOtherGroups(draftResponse, responses, ageDefinition.key)
+    : { overallAverageDistance: 0, distancesByGroup: [] };
+  const additionalReports = nonAgeReportDefinitions
+    .map((definition) => ({
+      definition,
+      report: getDistanceFromOtherGroups(draftResponse, responses, definition.key),
+    }))
+    .filter(({ definition }) => {
+      const value = draftState.categoryValues[definition.key];
+      return typeof value === "number" || (typeof value === "string" && value.trim().length > 0);
+    });
 
+  const reportAverages = [
+    ageReport.overallAverageDistance,
+    ...additionalReports.map((item) => item.report.overallAverageDistance),
+  ].filter((value) => value > 0);
   const overallMarginality =
-    (ageReport.overallAverageDistance + countryReport.overallAverageDistance + watchingReport.overallAverageDistance) / 3;
+    reportAverages.length > 0
+      ? reportAverages.reduce((sum, value) => sum + value, 0) / reportAverages.length
+      : 0;
 
   const orderedGenerationDistances = [...ageReport.distancesByGroup].sort(
     (left, right) => left.averageDistance - right.averageDistance
   );
 
-  const categoryLabels = [
-    `${draftState.profile.country}: ${countryReport.overallAverageDistance.toFixed(1)}% distance`,
-    `${draftState.profile.footballWatchingLevel} watchers: ${watchingReport.overallAverageDistance.toFixed(1)}% distance`,
-  ];
-
-  if (favoriteClubReport && draftState.profile.favoriteClub) {
-    categoryLabels.push(
-      `${draftState.profile.favoriteClub} fans: ${favoriteClubReport.overallAverageDistance.toFixed(1)}% distance`
-    );
-  }
+  const categoryLabels = additionalReports.map(({ definition, report }) =>
+    buildReportCategoryLabel(definition, draftState.categoryValues[definition.key], report.overallAverageDistance)
+  );
 
   return (
     <div
@@ -173,14 +191,18 @@ export function MarginalityReport({
           }}
         >
           <ComparisonTile imageSrc={youImage} label="You" value={`${overallMarginality.toFixed(1)}%`} />
-          {orderedGenerationDistances.map((item) => (
-            <ComparisonTile
-              key={item.label}
-              imageSrc={AGE_GROUP_DETAILS[item.label as AgeGroupKey]?.imageSrc ?? ""}
-              label={AGE_GROUP_DETAILS[item.label as AgeGroupKey]?.label ?? item.label}
-              value={`${item.averageDistance.toFixed(1)}%`}
-            />
-          ))}
+          {orderedGenerationDistances.map((item) => {
+            const details = AGE_GROUP_DETAILS[item.label as AgeGroupKey];
+
+            return (
+              <ComparisonTile
+                key={item.label}
+                imageSrc={details?.imageSrc ?? ""}
+                label={details?.label ?? item.label}
+                value={`${item.averageDistance.toFixed(1)}%`}
+              />
+            );
+          })}
         </div>
 
         <div
@@ -246,6 +268,21 @@ function ComparisonTile({ imageSrc, label, value }: { imageSrc: string; label: s
       <div style={{ marginTop: "4px" }}>{value}</div>
     </div>
   );
+}
+
+function buildReportCategoryLabel(
+  definition: MarginalityCategoryDefinition,
+  currentValue: string | number | undefined,
+  distance: number
+): string {
+  const label =
+    typeof currentValue === "number"
+      ? String(currentValue)
+      : typeof currentValue === "string"
+        ? currentValue.trim()
+        : "";
+
+  return `${definition.label}: ${label || "N/A"} -> ${distance.toFixed(1)}% distance`;
 }
 
 function CenteredMessage({ message }: { message: string }) {

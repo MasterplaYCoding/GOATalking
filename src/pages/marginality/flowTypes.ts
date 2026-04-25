@@ -1,6 +1,6 @@
-import type { MarginalityProfile } from "../../domain/MarginalityTest";
+import type { MarginalityCategoryValues } from "../../domain/MarginalityTest";
 
 export type MarginalityDraftState = {
-  profile: MarginalityProfile;
+  categoryValues: MarginalityCategoryValues;
   answers: Record<string, number>;
 };

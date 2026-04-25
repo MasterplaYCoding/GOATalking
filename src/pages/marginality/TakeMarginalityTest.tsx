@@ -1,13 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
-  MarginalityProfile,
-  MarginalityProfileFieldDefinition,
+  MarginalityCategoryDefinition,
+  MarginalityCategoryValues,
   MarginalityTest,
 } from "../../domain/MarginalityTest";
 import { trackUserActivity } from "../../services/browserMonitoringService";
 import { useResponsive } from "../../hooks/useResponsive";
-import { getAgeGroupFromAge } from "../../services/marginalityTestService";
+import { getVisibleInputCategoryDefinitions } from "../../services/marginalityTestService";
 import { hasValidationErrors, validateDynamicProfileValues } from "../../services/validationService";
 import { theme } from "../../theme/theme";
 import type { MarginalityDraftState } from "./flowTypes";
@@ -21,6 +21,7 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
   const { isMobile } = useResponsive();
   const { testId } = useParams<{ testId: string }>();
   const test = useMemo(() => tests.find((currentTest) => currentTest.id === testId), [testId, tests]);
+  const inputCategories = useMemo(() => (test ? getVisibleInputCategoryDefinitions(test) : []), [test]);
   const [profileValues, setProfileValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -29,25 +30,32 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
   }
 
   const handleStart = () => {
-    const nextErrors = validateDynamicProfileValues(test.profileFields, profileValues);
+    const nextErrors = validateDynamicProfileValues(inputCategories, profileValues);
     setErrors(nextErrors);
 
     if (hasValidationErrors(nextErrors)) {
       return;
     }
 
-    const age = Number(profileValues.age ?? 0);
+    const categoryValues: MarginalityCategoryValues = {};
 
-    const profile: MarginalityProfile = {
-      age,
-      ageGroup: getAgeGroupFromAge(age),
-      country: profileValues.country?.trim() || "",
-      footballWatchingLevel: (profileValues.footballWatchingLevel || "Casual") as MarginalityProfile["footballWatchingLevel"],
-      favoriteClub: profileValues.favoriteClub?.trim() || undefined,
-    };
+    inputCategories.forEach((field) => {
+      const rawValue = profileValues[field.key] ?? "";
+
+      if (field.inputType === "number") {
+        categoryValues[field.key] = Number(rawValue);
+        return;
+      }
+
+      const normalizedValue = rawValue.trim();
+
+      if (normalizedValue) {
+        categoryValues[field.key] = normalizedValue;
+      }
+    });
 
     const draftState: MarginalityDraftState = {
-      profile,
+      categoryValues,
       answers: {},
     };
 
@@ -82,7 +90,7 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {test.profileFields.map((field) => (
+          {inputCategories.map((field) => (
             <Field key={field.key} label={field.label}>
               <DynamicProfileInput
                 field={field}
@@ -118,7 +126,7 @@ function DynamicProfileInput({
   onChange,
   error,
 }: {
-  field: MarginalityProfileFieldDefinition;
+  field: MarginalityCategoryDefinition;
   value: string;
   onChange: (value: string) => void;
   error?: string;

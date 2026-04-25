@@ -19,6 +19,9 @@ export const AGE_GROUPS: AgeGroup = {
 
 export type AgeGroupKey = keyof AgeGroup;
 export type ProfileFieldInputType = "text" | "select" | "number";
+export type MarginalityCategoryValue = string | number;
+export type MarginalityCategoryValues = Record<string, MarginalityCategoryValue>;
+export type DerivedCategoryStrategy = "ageGroupFromAge";
 
 export interface AgeGroupDefinition {
   key: AgeGroupKey;
@@ -59,25 +62,13 @@ export const AGE_GROUP_DETAILS: Record<AgeGroupKey, AgeGroupDefinition> = {
   },
 };
 
-export type FootballWatchingLevel = "Rarely" | "Casual" | "Weekly" | "Obsessed";
-
 export interface MarginalityQuestion {
   id: string;
   text: string;
 }
 
-export interface MarginalityProfile {
-  age: number;
-  ageGroup: AgeGroupKey;
-  country: string;
-  footballWatchingLevel: FootballWatchingLevel;
-  favoriteClub?: string;
-}
-
-export type MarginalityProfileFieldKey = keyof MarginalityProfile;
-
-export interface MarginalityProfileFieldDefinition {
-  key: MarginalityProfileFieldKey;
+export interface MarginalityCategoryDefinition {
+  key: string;
   label: string;
   inputType: ProfileFieldInputType;
   required?: boolean;
@@ -85,6 +76,11 @@ export interface MarginalityProfileFieldDefinition {
   options?: string[];
   min?: number;
   max?: number;
+  isDerived?: boolean;
+  derivedFromKey?: string;
+  derivedStrategy?: DerivedCategoryStrategy;
+  includeInQuestionStats?: boolean;
+  includeInReport?: boolean;
 }
 
 export interface QuestionAgreementVote {
@@ -97,7 +93,7 @@ export interface MarginalityTest {
   title: string;
   topic: string;
   description: string;
-  profileFields: MarginalityProfileFieldDefinition[];
+  categoryDefinitions: MarginalityCategoryDefinition[];
   questions: MarginalityQuestion[];
   createdAt: Date;
 }
@@ -106,7 +102,7 @@ export interface MarginalityTestResponse {
   id: string;
   testId: string;
   userId: string;
-  profile: MarginalityProfile;
+  categoryValues: MarginalityCategoryValues;
   votes: QuestionAgreementVote[];
   submittedAt: Date;
 }

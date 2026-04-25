@@ -1,9 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Poll } from "../domain/Poll";
 import type { UserVotes } from "../domain/User";
 import { useResponsive } from "../hooks/useResponsive";
 import { UserPollsTable } from "../components/UserPollsTable";
-import { useCrudDemo } from "../workers/useCrudDemo";
 
 type UserStatsPageProps = {
     polls: Poll[];
@@ -11,6 +10,8 @@ type UserStatsPageProps = {
     currentUserId: string;
     userVotes: UserVotes;
 };
+
+type BackendPoll = Omit<Poll, "dateCreated"> & { dateCreated: string };
 
 const CHART_COLORS = [
     "#A3E4D7",
@@ -97,6 +98,42 @@ export function UserStatsPage({
     userVotes,
 }: UserStatsPageProps) {
     const { isMobile, isTablet } = useResponsive();
+    
+    // Track if the backend generator is currently running
+    const [isGeneratorRunning, setIsGeneratorRunning] = useState(false);
+
+    useEffect(() => {
+        if (!currentUserId) return;
+
+        const fetchMyPolls = async () => {
+            try {
+                const res = await fetch(`http://localhost:3000/api/polls/user/${currentUserId}`);
+                if (res.ok) {
+                    const data = await res.json() as { data?: BackendPoll[] } | BackendPoll[];
+                    const rawPolls = Array.isArray(data) ? data : (data.data ?? []);
+                    
+                    const parsedMyPolls = rawPolls.map((poll) => ({
+                        ...poll,
+                        dateCreated: new Date(poll.dateCreated)
+                    }));
+
+                    setPolls((current) => {
+                        const pollMap = new Map(current.map(p => [p.id, p]));
+                        parsedMyPolls.forEach((p: Poll) => pollMap.set(p.id, p));
+                        return Array.from(pollMap.values()).sort(
+                            (a, b) => b.dateCreated.getTime() - a.dateCreated.getTime()
+                        );
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch user polls:", error);
+            }
+        };
+
+        fetchMyPolls();
+    }, [currentUserId, setPolls]);
+    // ------------------------------------
+
     const userPolls = useMemo(() => {
         return polls.filter(poll => poll.ownerId === currentUserId);
     }, [polls, currentUserId]);
@@ -152,11 +189,22 @@ export function UserStatsPage({
         ];
     }, [userPolls]);
 
-    const { isCrudDemoRunning, handleRunCrudDemo } = useCrudDemo(currentUserId, setPolls);
+    // --- NEW BACKEND GENERATOR FUNCTIONS ---
+    const handleStartGenerator = async () => {
+        setIsGeneratorRunning(true);
+        await fetch("http://localhost:3000/api/generator/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: currentUserId }), // Passing your ID so the polls belong to you!
+        });
+    };
 
-    useEffect(() => {
-        console.log(`🖥️ UI RENDER: The screen just updated! It sees ${polls.length} total polls, and ${userPolls.length} belong to you.`);
-    }, [polls, userPolls]);
+    const handleStopGenerator = async () => {
+        setIsGeneratorRunning(false);
+        await fetch("http://localhost:3000/api/generator/stop", {
+            method: "POST",
+        });
+    };
 
     return (
         <div
@@ -174,21 +222,42 @@ export function UserStatsPage({
                 <p style={{ color: "white", margin: "8px 0 0 0", fontSize: isMobile ? "0.95rem" : "1.1rem" }}>
                     Track the performance and engagement of your polls.
                 </p>
-                <button
-                    onClick={handleRunCrudDemo}
-                    style={{
-                        marginTop: "14px",
-                        borderRadius: "999px",
-                        border: "1px solid rgba(255,255,255,0.35)",
-                        background: isCrudDemoRunning ? "rgba(255, 151, 151, 0.18)" : "rgba(255,255,255,0.08)",
-                        color: "white",
-                        padding: "8px 16px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                    }}
-                >
-                    {isCrudDemoRunning ? "Stop CRUD demo thread" : "Run CRUD demo thread"}
-                </button>
+                
+                {/* REPLACED CRUD DEMO WITH GENERATOR CONTROLS */}
+                <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "18px" }}>
+                    <button
+                        onClick={handleStartGenerator}
+                        disabled={isGeneratorRunning}
+                        style={{
+                            borderRadius: "999px",
+                            border: "none",
+                            background: isGeneratorRunning ? "rgba(255,255,255,0.2)" : "#47C7AA",
+                            color: isGeneratorRunning ? "rgba(255,255,255,0.5)" : "#173533",
+                            padding: "10px 20px",
+                            fontWeight: 700,
+                            cursor: isGeneratorRunning ? "not-allowed" : "pointer",
+                            transition: "0.2s"
+                        }}
+                    >
+                        Start Server Generator
+                    </button>
+                    <button
+                        onClick={handleStopGenerator}
+                        disabled={!isGeneratorRunning}
+                        style={{
+                            borderRadius: "999px",
+                            border: "1px solid rgba(255, 105, 105, 0.45)",
+                            background: "rgba(255, 105, 105, 0.12)",
+                            color: !isGeneratorRunning ? "rgba(255,255,255,0.3)" : "#ffd0d0",
+                            padding: "10px 20px",
+                            fontWeight: 700,
+                            cursor: !isGeneratorRunning ? "not-allowed" : "pointer",
+                            transition: "0.2s"
+                        }}
+                    >
+                        Stop Generator
+                    </button>
+                </div>
             </div>
 
             <div

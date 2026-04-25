@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { SidebarLayout } from "./components/SidebarLayout";
 import { FeedPage } from "./pages/FeedPage";
@@ -8,15 +8,43 @@ import { SignUpPage } from "./pages/authentication/SignUpPage";
 import { PollEditPage } from "./pages/polls/PollEditPage";
 import { PollCreatePage } from "./pages/polls/PollCreatePage";
 import { setPreference, trackUserActivity } from "./services/browserMonitoringService";
-import { getSeededMarginalityResponses,getSeededMarginalityTests,getSeededPolls,getSeededUser } from "./store/seedData";
 import { UserStatsPage } from "./pages/UserStatsPage";
+import { PollListsPage } from "./pages/PollListsPage";
 import { MarginalityTestPage } from "./pages/MarginalityTestPage";
 import { TakeMarginalityTest } from "./pages/marginality/TakeMarginalityTest";
 import { MarginalityTestPage as MarginalityQuestionPage } from "./pages/marginality/MarginalityTestPage";
 import { MarginalityReport } from "./pages/marginality/MarginalityReport";
 import { useGlobalStore } from "./store/useGlobalStore";
+import { syncOfflineQueue } from "./services/offlineQueueService";
+import { normalizeMarginalityResponse } from "./services/marginalityTestService";
+import { useWebSocket } from "./hooks/useWebSocket";
+import { useBackendStatus } from "./hooks/useBackendStatus";
+import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
+import type { Poll } from "./domain/Poll";
+import type { User } from "./domain/User";
+import type { MarginalityTest, MarginalityTestResponse } from "./domain/MarginalityTest";
+
+const client = new ApolloClient({
+  link: new HttpLink({ uri: 'http://localhost:3000/graphql' }),
+  cache: new InMemoryCache(),
+});
+
+type BackendPoll = Omit<Poll, "dateCreated"> & { dateCreated: string };
+type BackendUser = User;
+type BackendMarginalityTest = Omit<MarginalityTest, "createdAt"> & { createdAt: string };
+type BackendMarginalityResponse = Omit<MarginalityTestResponse, "submittedAt"> & {
+  submittedAt: string;
+  categoryValues?: Record<string, unknown>;
+  votes?: Array<{ questionId: string; agreement: number | string }>;
+  profile?: Record<string, unknown>;
+};
 
 function App() {
+
+  useWebSocket(client);
+  const isBackendOffline = useBackendStatus();
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,7 +55,6 @@ function App() {
   const setMarginalityResponses = useGlobalStore((state) => state.setMarginalityResponses);
 
   const polls = useGlobalStore((state) => state.polls);
-  const users = useGlobalStore((state) => state.users);
   const userVotes = useGlobalStore((state) => state.userVotes);
   const marginalityTests = useGlobalStore((state) => state.marginalityTests);
   const marginalityResponses = useGlobalStore((state) => state.marginalityResponses);
@@ -35,49 +62,81 @@ function App() {
 
   const handleSubmitMarginalityResponse = useGlobalStore((state) => state.handleSubmitMarginalityResponse);
 
-  const seededUser = useMemo(() => users[0] ?? getSeededUser(), [users]);
-  const initialPolls = useMemo(() => polls.length > 0 ? polls : getSeededPolls(), [polls]);
-  const initialMarginalityTests = useMemo(
-    () => (marginalityTests.length > 0 ? marginalityTests : getSeededMarginalityTests()),
-    [marginalityTests]
-  );
-  const initialMarginalityResponses = useMemo(
-    () =>
-      marginalityResponses.length > 0
-        ? marginalityResponses
-        : getSeededMarginalityResponses(initialMarginalityTests),
-    [initialMarginalityTests, marginalityResponses]
-  );
-
   useEffect(() => {
-    if (users.length === 0) setUsers([seededUser]);
-    if (!currentUserId) setCurrentUserId(seededUser.id);
+    const fetchBackendData = async () => {
+      try {
+        let parsedTests: MarginalityTest[] = [];
 
-    if (polls.length === 0) setPolls(initialPolls);
+        const pollsRes = await fetch("http://localhost:3000/api/polls?limit=4");
+        if (pollsRes.ok) {
+          const pollsData = await pollsRes.json() as { data?: BackendPoll[] } | BackendPoll[];
+          const rawPolls = Array.isArray(pollsData) ? pollsData : (pollsData.data ?? []);
+          const parsedPolls = rawPolls.map((poll) => ({
+            ...poll,
+            dateCreated: new Date(poll.dateCreated)
+          }));
+          setPolls((currentPolls) => {
+            const pollMap = new Map(currentPolls.map((poll) => [poll.id, poll]));
 
-    if (marginalityTests.length === 0) {
-      setMarginalityTests(initialMarginalityTests);
-    }
+            parsedPolls.forEach((poll) => {
+              pollMap.set(poll.id, poll);
+            });
 
-    if (marginalityResponses.length === 0) {
-      setMarginalityResponses(initialMarginalityResponses);
-    }
-  }, [
-    currentUserId,
-    initialMarginalityResponses,
-    initialMarginalityTests,
-    initialPolls,
-    marginalityResponses.length,
-    marginalityTests.length,
-    polls.length,
-    seededUser,
-    setCurrentUserId,
-    setMarginalityResponses,
-    setMarginalityTests,
-    setPolls,
-    setUsers,
-    users.length,
-  ]);
+            return Array.from(pollMap.values()).sort(
+              (a, b) => b.dateCreated.getTime() - a.dateCreated.getTime()
+            );
+          });
+        }
+
+        const usersRes = await fetch("http://localhost:3000/api/users?limit=50");
+        if (usersRes.ok) {
+          const usersData = await usersRes.json() as { data?: BackendUser[] } | BackendUser[];
+          const fetchedUsers = Array.isArray(usersData) ? usersData : (usersData.data ?? []);
+          setUsers(fetchedUsers);
+          if (fetchedUsers.length > 0 && !currentUserId) {
+            setCurrentUserId(fetchedUsers[0].id);
+          }
+        }
+
+        const marginalityRes = await fetch("http://localhost:3000/api/marginality?limit=50");
+        if (marginalityRes.ok) {
+          const marginalityData = await marginalityRes.json() as { data?: BackendMarginalityTest[] } | BackendMarginalityTest[];
+          const rawTests = Array.isArray(marginalityData) ? marginalityData : (marginalityData.data ?? []);
+          parsedTests = rawTests.map((test) => ({
+            ...test,
+            createdAt: new Date(test.createdAt)
+          }));
+          setMarginalityTests(parsedTests);
+        }
+
+        const responsesRes = await fetch("http://localhost:3000/api/marginality/responses");
+        if (responsesRes.ok) {
+          const responsesData = await responsesRes.json() as { data?: BackendMarginalityResponse[] } | BackendMarginalityResponse[];
+          const rawResponses = Array.isArray(responsesData) ? responsesData : (responsesData.data ?? []);
+          
+          const parsedResponses = rawResponses
+            .map((response) => {
+              const baseResponse = { ...response, submittedAt: new Date(response.submittedAt) };
+              const matchingTest = parsedTests.find((test) => test.id === baseResponse.testId);
+              if (!matchingTest) return null;
+              return normalizeMarginalityResponse(matchingTest, baseResponse);
+            })
+            .filter((response): response is MarginalityTestResponse => response !== null);
+            
+          setMarginalityResponses(parsedResponses);
+        }
+
+        console.log("Successfully connected to Node.js Backend!");
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchBackendData();
+
+    window.addEventListener("online", syncOfflineQueue);
+    return () => window.removeEventListener("online", syncOfflineQueue);
+  }, [setPolls, setUsers, setMarginalityTests, setMarginalityResponses, setCurrentUserId, currentUserId]);
 
   useEffect(() => {
     trackUserActivity("route", location.pathname);
@@ -85,6 +144,8 @@ function App() {
   }, [location.pathname]);
 
   return (
+    <ApolloProvider client={client}>
+    {isBackendOffline ? <OfflineBanner /> : null}
     <Routes>
       <Route
         path="/"
@@ -126,7 +187,7 @@ function App() {
             <div style={{ minHeight: "100vh" }}>
               <FeedPage
                 polls={polls}
-                currentUserId={currentUserId ?? seededUser.id}
+                currentUserId={currentUserId ?? "demo-user"}
                 userVotes={userVotes}
               />
             </div>
@@ -139,9 +200,17 @@ function App() {
               <UserStatsPage
                 polls={polls}
                 setPolls={setPolls}
-                currentUserId={currentUserId ?? seededUser.id}
+                currentUserId={currentUserId ?? "demo-user"}
                 userVotes={userVotes}
               />
+            </div>
+          }
+        />
+        <Route
+          path="/lists"
+          element={
+            <div style={{ minHeight: "100vh" }}>
+              <PollListsPage />
             </div>
           }
         />
@@ -150,8 +219,8 @@ function App() {
           element={
             <div style={{ minHeight: "100vh" }}>
               <MarginalityTestPage
-                tests={marginalityTests.length > 0 ? marginalityTests : initialMarginalityTests}
-                responses={marginalityResponses.length > 0 ? marginalityResponses : initialMarginalityResponses}
+                tests={marginalityTests}
+                responses={marginalityResponses}
               />
             </div>
           }
@@ -161,7 +230,7 @@ function App() {
           element={
             <div style={{ minHeight: "100vh" }}>
               <TakeMarginalityTest
-                tests={marginalityTests.length > 0 ? marginalityTests : initialMarginalityTests}
+                tests={marginalityTests}
               />
             </div>
           }
@@ -171,8 +240,8 @@ function App() {
           element={
             <div style={{ minHeight: "100vh" }}>
               <MarginalityQuestionPage
-                tests={marginalityTests.length > 0 ? marginalityTests : initialMarginalityTests}
-                responses={marginalityResponses.length > 0 ? marginalityResponses : initialMarginalityResponses}
+                tests={marginalityTests}
+                responses={marginalityResponses}
               />
             </div>
           }
@@ -182,9 +251,9 @@ function App() {
           element={
             <div style={{ minHeight: "100vh" }}>
               <MarginalityReport
-                tests={marginalityTests.length > 0 ? marginalityTests : initialMarginalityTests}
-                responses={marginalityResponses.length > 0 ? marginalityResponses : initialMarginalityResponses}
-                currentUserId={currentUserId ?? seededUser.id}
+                tests={marginalityTests}
+                responses={marginalityResponses}
+                currentUserId={currentUserId ?? "demo-user"}
                 onSubmitResponse={handleSubmitMarginalityResponse}
               />
             </div>
@@ -209,6 +278,33 @@ function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ApolloProvider>
+  );
+}
+
+function OfflineBanner() {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 12,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 1000,
+        borderRadius: 999,
+        padding: "8px 16px",
+        background: "rgba(20, 20, 20, 0.82)",
+        color: "white",
+        border: "1px solid rgba(255,255,255,0.18)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+        fontSize: 13,
+        fontWeight: 700,
+        letterSpacing: "0.01em",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      Offline mode: backend server is unavailable
+    </div>
   );
 }
 

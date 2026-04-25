@@ -3,6 +3,32 @@ import { trackUserActivity } from "../services/browserMonitoringService";
 import { useResponsive } from "../hooks/useResponsive";
 import { hasValidationErrors, validatePollInput } from "../services/validationService";
 import { theme } from "../theme/theme";
+// 1. Fixed the Apollo imports to come from the main package
+import { gql } from '@apollo/client'; 
+import { useMutation } from '@apollo/client/react'; 
+
+
+// 2. Updated the mutation to match your state (added imageUrl)
+const CREATE_POLL = gql`
+  mutation CreateNewPoll(
+    $title: String!
+    $category: String!
+    $description: String
+    $imageUrl: String
+    $options: [OptionInput!]! 
+  ) {
+    createPoll(
+      title: $title
+      category: $category
+      description: $description
+      imageUrl: $imageUrl
+      options: $options
+    ) {
+      id
+      title
+    }
+  }
+`;
 
 export type NewPollData = {
     title: string;
@@ -11,8 +37,15 @@ export type NewPollData = {
     options: string[];
 };
 
+interface CreatePollResponse {
+    createPoll: {
+        id: string;
+        title: string;
+    };
+}
+
 type PollCardCreateProps = {
-    onCreatePoll: (pollData: NewPollData) => void;
+    onCreatePoll?: (pollData: NewPollData) => void;
 };
 
 export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
@@ -22,8 +55,9 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
     const [imageUrl, setImageUrl] = useState("");
     const [errors, setErrors] = useState<Partial<Record<"title" | "description" | "imageUrl" | "options", string>>>({});
     
-    // Start with 2 empty options by default
     const [options, setOptions] = useState<string[]>(["", ""]);
+
+    const [createPoll, { loading, error: apolloError }] = useMutation<CreatePollResponse>(CREATE_POLL);
 
     const handleOptionChange = (index: number, value: string) => {
         const newOptions = [...options];
@@ -39,7 +73,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
         setOptions(options.filter((_, index) => index !== indexToRemove));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const filledOptions = options.filter(opt => opt.trim() !== "");
         const nextErrors = validatePollInput({
             title,
@@ -54,19 +88,39 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
         }
 
         trackUserActivity("poll", "create-poll-submit");
-        onCreatePoll({
+
+        const nextPollData: NewPollData = {
             title: title.trim(),
             description: description.trim(),
             imageUrl: imageUrl.trim(),
-            options: filledOptions,
-        });
+            options: filledOptions.map((option) => option.trim()),
+        };
+
+        if (onCreatePoll) {
+            onCreatePoll(nextPollData);
+            return;
+        }
+        
+        try {
+            await createPoll({
+                variables: {
+                    title: nextPollData.title,
+                    category: "General", // Hardcoded since it's required by the schema but missing in the UI
+                    description: nextPollData.description,
+                    imageUrl: nextPollData.imageUrl,
+                    options: nextPollData.options.map(opt => ({ text: opt })) 
+                }
+            });
+        } catch (err) {
+            console.error("Mutation failed:", err);
+        }
     };
 
     return (
         <div
             style={{
-                width: "100%",           // Fixes the off-center squishing issue
-                maxWidth: "600px",       // Stops it from getting too wide
+                width: "100%",           
+                maxWidth: "600px",       
                 backgroundColor: "#C4DBD5",
                 borderRadius: "20px",
                 padding: isMobile ? "20px" : "32px",
@@ -158,7 +212,7 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                                 style={{
                                     background: "transparent",
                                     border: "none",
-                                    color: "#ef4444", // Red color for delete
+                                    color: "#ef4444", 
                                     cursor: "pointer",
                                     display: "flex",
                                     alignItems: "center",
@@ -196,9 +250,26 @@ export function PollCardCreate({ onCreatePoll }: PollCardCreateProps) {
                 </button>
             </div>
 
+            {/* 5. Added Apollo Error Display */}
+            {!onCreatePoll && apolloError && (
+                <div style={{ backgroundColor: "#fee2e2", border: "1px solid #ef4444", padding: "12px", borderRadius: "8px", color: "#b91c1c" }}>
+                    <strong>Server Error:</strong> {apolloError.message}
+                </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: isMobile ? "stretch" : "flex-end", marginTop: "16px" }}>
-                <button onClick={handleSave} style={{ ...primaryButtonStyle, width: isMobile ? "100%" : undefined }}>
-                    Create Poll
+                {/* 6. Bound the loading state to the button */}
+                <button 
+                    onClick={handleSave} 
+                    disabled={!onCreatePoll && loading}
+                    style={{ 
+                        ...primaryButtonStyle, 
+                        width: isMobile ? "100%" : undefined,
+                        opacity: !onCreatePoll && loading ? 0.7 : 1,
+                        cursor: !onCreatePoll && loading ? "not-allowed" : "pointer"
+                    }}
+                >
+                    {!onCreatePoll && loading ? "Creating..." : "Create Poll"}
                 </button>
             </div>
         </div>
