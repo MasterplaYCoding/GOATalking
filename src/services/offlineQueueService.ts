@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "../config";
+
 export type QueuedAction = {
   id: string;
   endpoint: string;
@@ -42,7 +44,7 @@ export const syncOfflineQueue = async () => {
 
   for (const action of queue) {
     try {
-      const response = await fetch(`http://localhost:3000${action.endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}${action.endpoint}`, {
         method: action.method,
         headers: { "Content-Type": "application/json" },
         body: action.payload ? JSON.stringify(action.payload) : undefined,

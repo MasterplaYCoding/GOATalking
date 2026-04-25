@@ -24,9 +24,10 @@ import { ApolloProvider } from '@apollo/client/react';
 import type { Poll } from "./domain/Poll";
 import type { User } from "./domain/User";
 import type { MarginalityTest, MarginalityTestResponse } from "./domain/MarginalityTest";
+import { GRAPHQL_URL, API_BASE_URL } from "./config";
 
 const client = new ApolloClient({
-  link: new HttpLink({ uri: 'http://localhost:3000/graphql' }),
+  link: new HttpLink({ uri: GRAPHQL_URL }),
   cache: new InMemoryCache(),
 });
 
@@ -67,7 +68,7 @@ function App() {
       try {
         let parsedTests: MarginalityTest[] = [];
 
-        const pollsRes = await fetch("http://localhost:3000/api/polls?limit=4");
+        const pollsRes = await fetch(`${API_BASE_URL}/api/polls?limit=4`);
         if (pollsRes.ok) {
           const pollsData = await pollsRes.json() as { data?: BackendPoll[] } | BackendPoll[];
           const rawPolls = Array.isArray(pollsData) ? pollsData : (pollsData.data ?? []);
@@ -88,7 +89,7 @@ function App() {
           });
         }
 
-        const usersRes = await fetch("http://localhost:3000/api/users?limit=50");
+        const usersRes = await fetch(`${API_BASE_URL}/api/users?limit=50`);
         if (usersRes.ok) {
           const usersData = await usersRes.json() as { data?: BackendUser[] } | BackendUser[];
           const fetchedUsers = Array.isArray(usersData) ? usersData : (usersData.data ?? []);
@@ -98,7 +99,7 @@ function App() {
           }
         }
 
-        const marginalityRes = await fetch("http://localhost:3000/api/marginality?limit=50");
+        const marginalityRes = await fetch(`${API_BASE_URL}/api/marginality?limit=50`);
         if (marginalityRes.ok) {
           const marginalityData = await marginalityRes.json() as { data?: BackendMarginalityTest[] } | BackendMarginalityTest[];
           const rawTests = Array.isArray(marginalityData) ? marginalityData : (marginalityData.data ?? []);
@@ -109,7 +110,7 @@ function App() {
           setMarginalityTests(parsedTests);
         }
 
-        const responsesRes = await fetch("http://localhost:3000/api/marginality/responses");
+        const responsesRes = await fetch(`${API_BASE_URL}/api/marginality/responses`);
         if (responsesRes.ok) {
           const responsesData = await responsesRes.json() as { data?: BackendMarginalityResponse[] } | BackendMarginalityResponse[];
           const rawResponses = Array.isArray(responsesData) ? responsesData : (responsesData.data ?? []);

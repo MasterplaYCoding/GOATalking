@@ -7,6 +7,7 @@ import { addOption, createPoll, updatePoll, vote } from "../services/pollService
 import { trackUserActivity } from "../services/browserMonitoringService";
 import type { NewPollData } from "../components/PollCardCreate";
 import { addToOfflineQueue } from "../services/offlineQueueService";
+import { API_BASE_URL } from "../config";
 
 const USER_VOTES_STORAGE_KEY = "goatalking_user_votes";
 const CURRENT_USER_STORAGE_KEY = "goatalking_current_user_id";
@@ -109,7 +110,7 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      const response = await fetch(`http://localhost:3000/api/polls/${pollId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -128,7 +129,7 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      const response = await fetch(`http://localhost:3000/api/polls/${pollId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Server rejected delete");
@@ -158,7 +159,7 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     set((state) => ({ polls: [tempPoll, ...state.polls] }));
 
     try {
-      const response = await fetch("http://localhost:3000/api/polls", {
+      const response = await fetch(`${API_BASE_URL}/api/polls`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tempPoll),
@@ -185,7 +186,7 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     });
 
     try {
-      const response = await fetch(`http://localhost:3000/api/polls/${pollId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result.poll),
@@ -210,7 +211,7 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     });
 
     try {
-      const res = await fetch("http://localhost:3000/api/marginality/responses", {
+      const res = await fetch(`${API_BASE_URL}/api/marginality/responses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(response),

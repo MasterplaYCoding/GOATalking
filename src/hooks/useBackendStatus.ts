@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { syncOfflineQueue } from "../services/offlineQueueService";
+import { API_BASE_URL } from "../config";
 
-const HEALTH_ENDPOINT = "http://localhost:3000/health";
+const HEALTH_ENDPOINT = `${API_BASE_URL}/health`;
 const CHECK_INTERVAL_MS = 5000;
 
 export function useBackendStatus() {

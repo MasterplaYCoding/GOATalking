@@ -3,6 +3,8 @@ import type { Poll } from "../domain/Poll";
 import type { UserVotes } from "../domain/User";
 import { useResponsive } from "../hooks/useResponsive";
 import { UserPollsTable } from "../components/UserPollsTable";
+import { API_BASE_URL } from "../config";
+
 
 type UserStatsPageProps = {
     polls: Poll[];
@@ -107,7 +109,7 @@ export function UserStatsPage({
 
         const fetchMyPolls = async () => {
             try {
-                const res = await fetch(`http://localhost:3000/api/polls/user/${currentUserId}`);
+                const res = await fetch(`${API_BASE_URL}/api/polls/user/${currentUserId}`);
                 if (res.ok) {
                     const data = await res.json() as { data?: BackendPoll[] } | BackendPoll[];
                     const rawPolls = Array.isArray(data) ? data : (data.data ?? []);
@@ -192,7 +194,7 @@ export function UserStatsPage({
     // --- NEW BACKEND GENERATOR FUNCTIONS ---
     const handleStartGenerator = async () => {
         setIsGeneratorRunning(true);
-        await fetch("http://localhost:3000/api/generator/start", {
+        await fetch(`${API_BASE_URL}/api/generator/start`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: currentUserId }), // Passing your ID so the polls belong to you!
@@ -201,7 +203,7 @@ export function UserStatsPage({
 
     const handleStopGenerator = async () => {
         setIsGeneratorRunning(false);
-        await fetch("http://localhost:3000/api/generator/stop", {
+        await fetch(`${API_BASE_URL}/api/generator/stop`, {
             method: "POST",
         });
     };
@@ -223,7 +225,6 @@ export function UserStatsPage({
                     Track the performance and engagement of your polls.
                 </p>
                 
-                {/* REPLACED CRUD DEMO WITH GENERATOR CONTROLS */}
                 <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "18px" }}>
                     <button
                         onClick={handleStartGenerator}
