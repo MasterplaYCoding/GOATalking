@@ -185,7 +185,7 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     }
   },
 
-  handleVote: async (pollId, optionId, userId) => {
+handleVote: async (pollId, optionId, userId) => {
     const state = get();
     const poll = state.polls.find((p) => p.id === pollId);
     if (!poll) return;
@@ -200,14 +200,23 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}`, {
-        method: "PUT",
+      const response = await fetch(`${API_BASE_URL}/api/polls/vote`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.poll),
+        body: JSON.stringify({ pollId, optionId, userId }),
       });
+      
       if (!response.ok) throw new Error("Server rejected vote");
+
+      const realPollRaw = await response.json();
+      const realPoll = { ...realPollRaw, dateCreated: new Date(realPollRaw.dateCreated) };
+
+      set((state) => ({
+        polls: state.polls.map(p => p.id === pollId ? realPoll : p)
+      }));
+
     } catch {
-      addToOfflineQueue(`/api/polls/${pollId}`, "PUT", result.poll);
+      addToOfflineQueue(`/api/polls/vote`, "POST", { pollId, optionId, userId });
     }
   },
 

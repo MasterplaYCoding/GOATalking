@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { use, useState } from "react";
 import type { Poll } from "../domain/Poll";
 import { theme } from "../theme/theme";
 import { getCurrentStandings } from "../services/pollService";
@@ -8,8 +8,8 @@ import { useMutation } from '@apollo/client/react';
 
 
 const VOTE_MUTATION = gql`
-  mutation VoteOnPoll($pollId: ID!, $optionId: ID!) {
-    votePoll(pollId: $pollId, optionId: $optionId) {
+  mutation VoteOnPoll($pollId: ID!, $optionId: ID!, $userId: ID!) {
+    votePoll(pollId: $pollId, optionId: $optionId, userId: $userId) {
       id
       interactionCount
       options {
@@ -102,7 +102,8 @@ const PollResults = ({
                 submitVote({
                   variables: {
                     pollId: poll.id,
-                    optionId: option.id
+                    optionId: option.id,
+                    userId: currentUserId
                   }
                 });
 

@@ -4,6 +4,8 @@ import { useResponsive } from "../../hooks/useResponsive";
 import { trackUserActivity } from "../../services/browserMonitoringService";
 import { hasValidationErrors, validateLogInInput } from "../../services/validationService";
 import { theme } from "../../theme/theme";
+import { useGlobalStore } from "../../store/useGlobalStore";
+import { API_BASE_URL } from "../../config";
 
 type LogInPageProps = {
   onSubmit: () => void;
@@ -15,17 +17,38 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [serverError, setServerError] = useState(""); 
 
-  const handleSubmit = () => {
+  const setCurrentUserId = useGlobalStore((state) => state.setCurrentUserId);
+
+  const handleSubmit = async () => {
     const nextErrors = validateLogInInput({ email, password });
     setErrors(nextErrors);
+    setServerError(""); 
 
     if (hasValidationErrors(nextErrors)) {
       return;
     }
 
-    trackUserActivity("auth", "log-in-submit");
-    onSubmit();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Invalid credentials");
+      }
+
+      const userData = await response.json();
+
+      setCurrentUserId(userData.id);
+      trackUserActivity("auth", "log-in-submit");
+      onSubmit();
+    } catch (err) {
+      setServerError("Login failed. Please check your email and password.");
+    }
   };
 
   return (
@@ -43,10 +66,18 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
     >
       <img src="/logo.png" alt="GOATalking Logo" style={{ width: isMobile ? "120px" : "150px", margin: "20px 0" }} />
       <h1 style={{ color: "white", margin: 0, fontSize: isMobile ? "2rem" : undefined }}>Authentication</h1>
+      
+      {serverError && (
+        <div style={{ width: "100%", maxWidth: "400px", padding: "12px", borderRadius: "8px", backgroundColor: "rgba(239, 68, 68, 0.2)", color: "#ef4444", textAlign: "center", fontSize: "0.95rem", fontWeight: "bold", border: "1px solid rgba(239, 68, 68, 0.5)" }}>
+          {serverError}
+        </div>
+      )}
+
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: isMobile ? "24px" : "40px" }}>
         <TextInput value={email} onChange={setEmail} label="Email" error={errors.email} />
         <TextInput value={password} onChange={setPassword} label="Password" type="password" error={errors.password} />
       </div>
+
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "12px" }}>
         <button
           onClick={handleSubmit}
@@ -59,7 +90,7 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
             color: "white",
             fontSize: 16,
             cursor: "pointer",
-            boxShadow: theme.shadow.sm,
+            boxShadow: theme.shadow?.sm || "0 1px 2px rgba(0,0,0,0.1)",
             height: 40,
             margin: 0,
           }}

@@ -10,6 +10,7 @@ import { PollCreatePage } from "./pages/polls/PollCreatePage";
 import { setPreference, trackUserActivity } from "./services/browserMonitoringService";
 import { UserStatsPage } from "./pages/UserStatsPage";
 import { PollListsPage } from "./pages/PollListsPage";
+import { GlobalChatPage } from "./pages/GlobalChatPage";
 import { MarginalityTestPage } from "./pages/MarginalityTestPage";
 import { TakeMarginalityTest } from "./pages/marginality/TakeMarginalityTest";
 import { MarginalityTestPage as MarginalityQuestionPage } from "./pages/marginality/MarginalityTestPage";
@@ -212,6 +213,14 @@ function App() {
           element={
             <div style={{ minHeight: "100vh" }}>
               <PollListsPage />
+            </div>
+          }
+        />
+        <Route
+          path="/global-chat"
+          element={
+            <div style={{ minHeight: "100vh" }}>
+              <GlobalChatPage />
             </div>
           }
         />

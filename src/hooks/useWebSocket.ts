@@ -1,8 +1,9 @@
 import { useEffect } from "react";
+import type { ApolloClient } from "@apollo/client";
 import { WS_URL } from "../config";
 import { useGlobalStore } from "../store/useGlobalStore";
 
-export const useWebSocket = (client: any) => {
+export const useWebSocket = (client: ApolloClient<object>) => {
   const setPolls = useGlobalStore((state) => state.setPolls);
 
   useEffect(() => {

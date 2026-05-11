@@ -7,6 +7,7 @@ const navItems = [
   { label: "Feed", to: "/feed", icon: "F" },
   { label: "Your Polls", to: "/your-polls", icon: "Y" },
   { label: "Lists", to: "/lists", icon: "L" },
+  { label: "Global Chat", to: "/global-chat", icon: "C" },
   { label: "Marginality Test", to: "/marginality-test", icon: "M" },
 ];
 
