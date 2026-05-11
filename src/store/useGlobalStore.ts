@@ -156,6 +156,8 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     tempPoll = { ...tempPoll, ownerId, dateCreated: new Date(), listId: null };
 
     trackUserActivity("poll", `create-poll:${tempPoll.id}`);
+    
+    // Instantly draw the fake one
     set((state) => ({ polls: [tempPoll, ...state.polls] }));
 
     try {
@@ -166,6 +168,18 @@ export const useGlobalStore = create<AppState>((set, get) => ({
       });
       
       if (!response.ok) throw new Error("Server rejected create");
+
+      const realPollRaw = await response.json();
+      
+      const realPoll = {
+        ...realPollRaw,
+        dateCreated: new Date(realPollRaw.dateCreated)
+      };
+
+      set((state) => ({
+        polls: state.polls.map(p => p.id === tempPoll.id ? realPoll : p)
+      }));
+
     } catch {
       addToOfflineQueue("/api/polls", "POST", tempPoll);
     }

@@ -191,13 +191,12 @@ export function UserStatsPage({
         ];
     }, [userPolls]);
 
-    // --- NEW BACKEND GENERATOR FUNCTIONS ---
     const handleStartGenerator = async () => {
         setIsGeneratorRunning(true);
         await fetch(`${API_BASE_URL}/api/generator/start`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: currentUserId }), // Passing your ID so the polls belong to you!
+            body: JSON.stringify({ userId: currentUserId }),
         });
     };
 

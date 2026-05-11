@@ -104,7 +104,7 @@ export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { loading, data } = useQuery<GetFeedPollsResponse>(GET_POLLS, {
-    variables: { page, limit: 4 },
+    variables: { page, limit: 10 },
   });
 
   useEffect(() => {
@@ -256,13 +256,13 @@ export function FeedPage({ polls, currentUserId, userVotes }: FeedPageProps) {
               ))
             )}
 
-            {hasMore && feedPolls.length > 0 && (
+            {hasMore && (
               <div ref={observerTarget} style={{ height: "40px", display: "flex", justifyContent: "center", alignItems: "center", marginTop: "20px" }}>
                 {loading && <span style={{ color: "rgba(255,255,255,0.5)" }}>Loading more polls...</span>}
               </div>
             )}
             
-            {!hasMore && feedPolls.length > 0 && (
+            {!hasMore && (
               <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", padding: "20px 0 40px" }}>
                 You've reached the end of the feed!
               </div>

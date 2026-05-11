@@ -19,6 +19,15 @@ export const useWebSocket = (client: any) => {
               ...data.payload, 
               dateCreated: new Date(data.payload.dateCreated) 
             };
+
+            const existingPollIndex = currentPolls.findIndex(p => p.title === parsedPoll.title);
+
+            if (existingPollIndex !== -1) {
+              const updatedPolls = [...currentPolls];
+              updatedPolls[existingPollIndex] = parsedPoll;
+              return updatedPolls;
+            }
+
             return [parsedPoll, ...currentPolls]; 
           });
         }
