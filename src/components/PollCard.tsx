@@ -1,4 +1,4 @@
-import { use, useState } from "react";
+import { useState } from "react";
 import type { Poll } from "../domain/Poll";
 import { theme } from "../theme/theme";
 import { getCurrentStandings } from "../services/pollService";

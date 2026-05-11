@@ -112,7 +112,10 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     try {
       const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": get().currentUserId || "demo-user"
+        },
         body: JSON.stringify(updates),
       });
       if (!response.ok) throw new Error("Server rejected update");
@@ -163,7 +166,10 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     try {
       const response = await fetch(`${API_BASE_URL}/api/polls`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": get().currentUserId || "demo-user"
+        },
         body: JSON.stringify(tempPoll),
       });
       
@@ -202,7 +208,10 @@ handleVote: async (pollId, optionId, userId) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/polls/vote`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": get().currentUserId || "demo-user"
+        },
         body: JSON.stringify({ pollId, optionId, userId }),
       });
       
@@ -223,6 +232,12 @@ handleVote: async (pollId, optionId, userId) => {
   handleSubmitMarginalityResponse: async (response) => {
     trackUserActivity("marginality", `submit-report:${response.testId}`);
     
+    const startedAt = localStorage.getItem("test_started_at");
+    
+    if (startedAt) {
+      localStorage.removeItem("test_started_at");
+    }
+
     set((state) => {
       const withoutCurrentUsersResponse = state.marginalityResponses.filter(
         (currentResponse) =>
@@ -233,11 +248,21 @@ handleVote: async (pollId, optionId, userId) => {
       };
     });
 
+    const payload = {
+      ...response,
+      startedAt: startedAt ? Number(startedAt) : undefined
+    };
+
+    console.log("FRONTEND SENDING:", payload);
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/marginality/responses`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(response),
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": get().currentUserId || "demo-user"
+        },
+        body: JSON.stringify(payload), 
       });
       if (!res.ok) throw new Error("Server rejected response");
     } catch {

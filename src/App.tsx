@@ -26,6 +26,7 @@ import type { Poll } from "./domain/Poll";
 import type { User } from "./domain/User";
 import type { MarginalityTest, MarginalityTestResponse } from "./domain/MarginalityTest";
 import { GRAPHQL_URL, API_BASE_URL } from "./config";
+import { ObservationListPage } from "./pages/ObservationListPage";
 
 const client = new ApolloClient({
   link: new HttpLink({ uri: GRAPHQL_URL }),
@@ -61,6 +62,7 @@ function App() {
   const marginalityTests = useGlobalStore((state) => state.marginalityTests);
   const marginalityResponses = useGlobalStore((state) => state.marginalityResponses);
   const currentUserId = useGlobalStore((state) => state.currentUserId);
+  const users = useGlobalStore((state) => state.users);
 
   const handleSubmitMarginalityResponse = useGlobalStore((state) => state.handleSubmitMarginalityResponse);
 
@@ -148,6 +150,7 @@ function App() {
   return (
     <ApolloProvider client={client}>
     {isBackendOffline ? <OfflineBanner /> : null}
+    <UserRoleBadge currentUserId={currentUserId} users={users} />
     <Routes>
       <Route
         path="/"
@@ -225,6 +228,14 @@ function App() {
           }
         />
         <Route
+          path="/observations"
+          element={
+            <div style={{ minHeight: "100vh" }}>
+              <ObservationListPage />
+            </div>
+          }
+        />
+        <Route
           path="/marginality-test"
           element={
             <div style={{ minHeight: "100vh" }}>
@@ -290,6 +301,70 @@ function App() {
     </Routes>
     </ApolloProvider>
   );
+}
+
+function UserRoleBadge({
+  currentUserId,
+  users,
+}: {
+  currentUserId?: string;
+  users: User[];
+}) {
+  const currentUser = users.find((user) => user.id === currentUserId);
+
+  if (!currentUser) {
+    return null;
+  }
+
+  const roleLabel = resolveUserRoleLabel(currentUser);
+  const isAdmin = roleLabel.toLowerCase() === "admin";
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: 16,
+        bottom: 16,
+        zIndex: 1000,
+        borderRadius: 999,
+        padding: "8px 14px",
+        background: isAdmin ? "rgba(215, 178, 62, 0.18)" : "rgba(71, 199, 170, 0.16)",
+        color: isAdmin ? "#ffe9a6" : "#c7fff2",
+        border: isAdmin ? "1px solid rgba(255, 221, 122, 0.45)" : "1px solid rgba(71, 199, 170, 0.45)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: "0.02em",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      {isAdmin ? "Admin" : "User"} mode
+    </div>
+  );
+}
+
+function resolveUserRoleLabel(user: User): string {
+  const explicitRoleName =
+    user.roleName ??
+    (typeof user.role === "string" ? user.role : user.role?.name);
+
+  if (explicitRoleName) {
+    return explicitRoleName;
+  }
+
+  const permissionNames = (user.permissions ?? []).map((permission) =>
+    typeof permission === "string" ? permission : permission.name ?? ""
+  );
+
+  if (permissionNames.some((permission) => permission.toUpperCase() === "FULL_ACCESS")) {
+    return "Admin";
+  }
+
+  if (user.username === "demo-user") {
+    return "Admin";
+  }
+
+  return "User";
 }
 
 function OfflineBanner() {

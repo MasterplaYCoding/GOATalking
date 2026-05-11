@@ -2,8 +2,9 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useResponsive } from "../hooks/useResponsive";
 import { theme } from "../theme/theme";
+import { useGlobalStore } from "../store/useGlobalStore";
 
-const navItems = [
+const baseNavItems = [
   { label: "Feed", to: "/feed", icon: "F" },
   { label: "Your Polls", to: "/your-polls", icon: "Y" },
   { label: "Lists", to: "/lists", icon: "L" },
@@ -15,6 +16,19 @@ export function SidebarLayout() {
   const [collapsed, setCollapsed] = useState(true);
   const navigate = useNavigate();
   const { isMobile } = useResponsive();
+
+  const currentUserId = useGlobalStore((state) => state.currentUserId);
+  const users = useGlobalStore((state) => state.users);
+
+  const currentUser = users.find((u) => u.id === currentUserId);
+  const roleName = currentUser?.roleName ?? 
+                   (typeof currentUser?.role === "string" ? currentUser.role : currentUser?.role?.name);
+  const isAdmin = currentUser?.username === "demo-user" || roleName === "Admin";
+
+  const navItems = [...baseNavItems];
+  if (isAdmin) {
+    navItems.push({ label: "Security Logs", to: "/observations", icon: "S" });
+  }
 
   const asideStyle: React.CSSProperties = isMobile
     ? {
@@ -72,7 +86,7 @@ export function SidebarLayout() {
           </button>
         )}
 
-        <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: "10px", flex: 1 }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: "10px", flex: 1, overflowX: isMobile ? "auto" : "visible" }}>
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -100,7 +114,8 @@ export function SidebarLayout() {
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: "rgba(255,255,255,0.1)",
+                  background: item.label === "Security Logs" ? "rgba(239, 68, 68, 0.2)" : "rgba(255,255,255,0.1)",
+                  color: item.label === "Security Logs" ? "#FCA5A5" : "inherit",
                   flexShrink: 0,
                 }}
               >

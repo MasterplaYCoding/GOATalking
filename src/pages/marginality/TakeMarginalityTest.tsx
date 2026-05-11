@@ -60,6 +60,7 @@ export function TakeMarginalityTest({ tests }: TakeMarginalityTestProps) {
     };
 
     trackUserActivity("marginality", `start-test:${test.id}`);
+    localStorage.setItem("test_started_at", Date.now().toString());
     navigate(`/marginality-test/${test.id}/questions/0`, { state: draftState });
   };
 

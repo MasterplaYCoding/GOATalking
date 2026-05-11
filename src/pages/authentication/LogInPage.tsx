@@ -46,7 +46,7 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
       setCurrentUserId(userData.id);
       trackUserActivity("auth", "log-in-submit");
       onSubmit();
-    } catch (err) {
+    } catch {
       setServerError("Login failed. Please check your email and password.");
     }
   };

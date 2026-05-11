@@ -47,15 +47,18 @@ export function MarginalityReport({
       return null;
     }
 
-    return createMarginalityResponse(
-      test,
-      currentUserId,
-      draftState.categoryValues,
-      Object.entries(draftState.answers).map(([questionId, agreement]) => ({
-        questionId,
-        agreement,
-      }))
-    );
+    return {
+      ...createMarginalityResponse(
+        test,
+        currentUserId,
+        draftState.categoryValues,
+        Object.entries(draftState.answers).map(([questionId, agreement]) => ({
+          questionId,
+          agreement,
+        }))
+      ),
+      startedAt: (draftState as any).startedAt,
+    };
   }, [currentUserId, draftState, test]);
 
   useEffect(() => {
