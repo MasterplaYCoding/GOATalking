@@ -20,6 +20,7 @@ import { syncOfflineQueue } from "./services/offlineQueueService";
 import { normalizeMarginalityResponse } from "./services/marginalityTestService";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useBackendStatus } from "./hooks/useBackendStatus";
+import { useResponsive } from "./hooks/useResponsive";
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
 import type { Poll } from "./domain/Poll";
@@ -47,6 +48,7 @@ function App() {
 
   useWebSocket(client);
   const isBackendOffline = useBackendStatus();
+  const { isMobile } = useResponsive();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -147,10 +149,12 @@ function App() {
     setPreference("lastVisitedRoute", location.pathname);
   }, [location.pathname]);
 
+  const isPublicRoute = location.pathname === "/" || location.pathname === "/login" || location.pathname === "/signup";
+
   return (
     <ApolloProvider client={client}>
     {isBackendOffline ? <OfflineBanner /> : null}
-    <UserRoleBadge currentUserId={currentUserId} users={users} />
+    {!isPublicRoute ? <UserRoleBadge currentUserId={currentUserId} users={users} isMobile={isMobile} /> : null}
     <Routes>
       <Route
         path="/"
@@ -305,9 +309,11 @@ function App() {
 
 function UserRoleBadge({
   currentUserId,
+  isMobile,
   users,
 }: {
   currentUserId?: string;
+  isMobile: boolean;
   users: User[];
 }) {
   const currentUser = users.find((user) => user.id === currentUserId);
@@ -324,7 +330,7 @@ function UserRoleBadge({
       style={{
         position: "fixed",
         right: 16,
-        bottom: 16,
+        bottom: isMobile ? 92 : 16,
         zIndex: 1000,
         borderRadius: 999,
         padding: "8px 14px",

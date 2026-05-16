@@ -75,6 +75,7 @@ export type AppState = {
   handleUpdateList: (listId: string, updates: Partial<Pick<PollList, "name" | "description">>) => void;
   handleDeleteList: (listId: string) => void;
   handleAssignPollToList: (pollId: string, listId: string | null) => void;
+  handleSignUp: (userData: { username: string; email: string; password: string }) => Promise<void>;
 };
 
 export const useGlobalStore = create<AppState>((set, get) => ({
@@ -330,6 +331,33 @@ handleVote: async (pollId, optionId, userId) => {
             }
           : poll
       ),
+    }));
+  },
+
+  handleSignUp: async (userData) => {
+    const response = await fetch(`${API_BASE_URL}/api/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: userData.username,
+        email: userData.email,
+        passwordHash: userData.password,
+        avatarUrl: "/logo.png"
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Signup failed");
+    }
+
+    const newUser = await response.json();
+
+    persistCurrentUserId(newUser.id);
+    
+    set((state) => ({
+      users: [...state.users, newUser],
+      currentUserId: newUser.id
     }));
   },
 }));

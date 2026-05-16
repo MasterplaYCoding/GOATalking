@@ -57,7 +57,7 @@ export function MarginalityReport({
           agreement,
         }))
       ),
-      startedAt: (draftState as any).startedAt,
+      startedAt: draftState.startedAt,
     };
   }, [currentUserId, draftState, test]);
 

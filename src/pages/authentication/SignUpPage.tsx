@@ -4,6 +4,7 @@ import { useResponsive } from "../../hooks/useResponsive";
 import { trackUserActivity } from "../../services/browserMonitoringService";
 import { hasValidationErrors, validateSignUpInput } from "../../services/validationService";
 import { theme } from "../../theme/theme";
+import { useGlobalStore } from "../../store/useGlobalStore";
 
 type SignUpPageProps = {
   onSubmit: () => void;
@@ -12,12 +13,14 @@ type SignUpPageProps = {
 
 export function SignUpPage({ onSubmit, onSwitchToLogIn }: SignUpPageProps) {
   const { isMobile } = useResponsive();
+  const handleSignUp = useGlobalStore((state) => state.handleSignUp);
+  
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [mail, setMail] = useState("");
-  const [errors, setErrors] = useState<{ username?: string; email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ username?: string; email?: string; password?: string; api?: string }>({});
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const nextErrors = validateSignUpInput({
       username,
       email: mail,
@@ -29,8 +32,13 @@ export function SignUpPage({ onSubmit, onSwitchToLogIn }: SignUpPageProps) {
       return;
     }
 
-    trackUserActivity("auth", "sign-up-submit");
-    onSubmit();
+    try {
+      await handleSignUp({ username, email: mail, password });
+      trackUserActivity("auth", "sign-up-submit");
+      onSubmit();
+    } catch (error: any) {
+      setErrors({ ...nextErrors, api: error.message });
+    }
   };
 
   return (
@@ -52,6 +60,7 @@ export function SignUpPage({ onSubmit, onSwitchToLogIn }: SignUpPageProps) {
         <TextInput value={username} onChange={setUsername} label="Username" error={errors.username} />
         <TextInput value={mail} onChange={setMail} label="Email" error={errors.email} />
         <TextInput value={password} onChange={setPassword} label="Password" type="password" error={errors.password} />
+        {errors.api && <p style={{ color: "#ff6b6b", fontSize: 14, margin: 0, textAlign: "center" }}>{errors.api}</p>}
       </div>
       <div style={{ width: "100%", maxWidth: "400px", display: "flex", flexDirection: "column", gap: "12px" }}>
         <button
