@@ -5,6 +5,8 @@ import { FeedPage } from "./pages/FeedPage";
 import { PresentationPage } from "./pages/PresentationPage";
 import { LogInPage } from "./pages/authentication/LogInPage";
 import { SignUpPage } from "./pages/authentication/SignUpPage";
+import { ForgotPasswordPage } from "./pages/authentication/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/authentication/ResetPasswordPage";
 import { PollEditPage } from "./pages/polls/PollEditPage";
 import { PollCreatePage } from "./pages/polls/PollCreatePage";
 import { setPreference, trackUserActivity } from "./services/browserMonitoringService";
@@ -45,7 +47,6 @@ type BackendMarginalityResponse = Omit<MarginalityTestResponse, "submittedAt"> &
 };
 
 function App() {
-
   useWebSocket(client);
   const isBackendOffline = useBackendStatus();
   const { isMobile } = useResponsive();
@@ -175,7 +176,7 @@ function App() {
     setPreference("lastVisitedRoute", location.pathname);
   }, [location.pathname]);
 
-  const isPublicRoute = location.pathname === "/" || location.pathname === "/login" || location.pathname === "/signup";
+  const isPublicRoute = location.pathname === "/" || location.pathname === "/login" || location.pathname === "/signup" || location.pathname === "/forgot-password" || location.pathname === "/reset-password";
 
   return (
     <ApolloProvider client={client}>
@@ -200,6 +201,7 @@ function App() {
             <LogInPage
               onSubmit={() => navigate("/feed")}
               onSwitchToSignUp={() => navigate("/signup")}
+              onSwitchToForgotPassword={() => navigate("/forgot-password")}
             />
           </div>
         }
@@ -212,6 +214,24 @@ function App() {
               onSubmit={() => navigate("/feed")}
               onSwitchToLogIn={() => navigate("/login")}
             />
+          </div>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <div style={{ minHeight: "100vh" }}>
+            <ForgotPasswordPage
+              onBackToLogin={() => navigate("/login")}
+            />
+          </div>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <div style={{ minHeight: "100vh" }}>
+            <ResetPasswordPage />
           </div>
         }
       />
