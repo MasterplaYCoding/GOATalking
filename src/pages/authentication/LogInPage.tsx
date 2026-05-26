@@ -5,7 +5,6 @@ import { trackUserActivity } from "../../services/browserMonitoringService";
 import { hasValidationErrors, validateLogInInput } from "../../services/validationService";
 import { theme } from "../../theme/theme";
 import { useGlobalStore } from "../../store/useGlobalStore";
-import { API_BASE_URL } from "../../config";
 
 type LogInPageProps = {
   onSubmit: () => void;
@@ -19,7 +18,8 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [serverError, setServerError] = useState(""); 
 
-  const setCurrentUserId = useGlobalStore((state) => state.setCurrentUserId);
+  // 👇 GRAB THE STORE'S LOGIN FUNCTION INSTEAD
+  const handleLogIn = useGlobalStore((state) => state.handleLogIn);
 
   const handleSubmit = async () => {
     const nextErrors = validateLogInInput({ email, password });
@@ -31,22 +31,12 @@ export function LogInPage({ onSubmit, onSwitchToSignUp }: LogInPageProps) {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      // 👇 CALL THE STORE FUNCTION THAT ACTUALLY SAVES THE TOKEN
+      await handleLogIn({ email, password });
 
-      if (!response.ok) {
-        throw new Error("Invalid credentials");
-      }
-
-      const userData = await response.json();
-
-      setCurrentUserId(userData.id);
       trackUserActivity("auth", "log-in-submit");
       onSubmit();
-    } catch {
+    } catch (error) {
       setServerError("Login failed. Please check your email and password.");
     }
   };

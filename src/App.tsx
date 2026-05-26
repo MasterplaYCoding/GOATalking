@@ -68,12 +68,20 @@ function App() {
 
   const handleSubmitMarginalityResponse = useGlobalStore((state) => state.handleSubmitMarginalityResponse);
 
+  const handleLogOut = useGlobalStore((state) => state.handleLogOut);
+  const token = useGlobalStore((state) => state.token);
+
   useEffect(() => {
     const fetchBackendData = async () => {
       try {
         let parsedTests: MarginalityTest[] = [];
 
-        const pollsRes = await fetch(`${API_BASE_URL}/api/polls?limit=4`);
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const pollsRes = await fetch(`${API_BASE_URL}/api/polls?limit=4`, { headers });
         if (pollsRes.ok) {
           const pollsData = await pollsRes.json() as { data?: BackendPoll[] } | BackendPoll[];
           const rawPolls = Array.isArray(pollsData) ? pollsData : (pollsData.data ?? []);
@@ -83,28 +91,23 @@ function App() {
           }));
           setPolls((currentPolls) => {
             const pollMap = new Map(currentPolls.map((poll) => [poll.id, poll]));
-
             parsedPolls.forEach((poll) => {
               pollMap.set(poll.id, poll);
             });
-
             return Array.from(pollMap.values()).sort(
               (a, b) => b.dateCreated.getTime() - a.dateCreated.getTime()
             );
           });
         }
 
-        const usersRes = await fetch(`${API_BASE_URL}/api/users?limit=50`);
+        const usersRes = await fetch(`${API_BASE_URL}/api/users?limit=50`, { headers });
         if (usersRes.ok) {
           const usersData = await usersRes.json() as { data?: BackendUser[] } | BackendUser[];
           const fetchedUsers = Array.isArray(usersData) ? usersData : (usersData.data ?? []);
           setUsers(fetchedUsers);
-          if (fetchedUsers.length > 0 && !currentUserId) {
-            setCurrentUserId(fetchedUsers[0].id);
-          }
         }
 
-        const marginalityRes = await fetch(`${API_BASE_URL}/api/marginality?limit=50`);
+        const marginalityRes = await fetch(`${API_BASE_URL}/api/marginality?limit=50`, { headers });
         if (marginalityRes.ok) {
           const marginalityData = await marginalityRes.json() as { data?: BackendMarginalityTest[] } | BackendMarginalityTest[];
           const rawTests = Array.isArray(marginalityData) ? marginalityData : (marginalityData.data ?? []);
@@ -115,7 +118,7 @@ function App() {
           setMarginalityTests(parsedTests);
         }
 
-        const responsesRes = await fetch(`${API_BASE_URL}/api/marginality/responses`);
+        const responsesRes = await fetch(`${API_BASE_URL}/api/marginality/responses`, { headers });
         if (responsesRes.ok) {
           const responsesData = await responsesRes.json() as { data?: BackendMarginalityResponse[] } | BackendMarginalityResponse[];
           const rawResponses = Array.isArray(responsesData) ? responsesData : (responsesData.data ?? []);
@@ -142,7 +145,30 @@ function App() {
 
     window.addEventListener("online", syncOfflineQueue);
     return () => window.removeEventListener("online", syncOfflineQueue);
-  }, [setPolls, setUsers, setMarginalityTests, setMarginalityResponses, setCurrentUserId, currentUserId]);
+  }, [setPolls, setUsers, setMarginalityTests, setMarginalityResponses, setCurrentUserId, currentUserId, token]);
+
+  useEffect(() => {
+      if (!token) return;
+
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const resetTimer = () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          handleLogOut();
+          navigate("/login");
+        }, 900000);
+      };
+
+      const events = ["mousemove", "keydown", "mousedown", "touchstart", "scroll"];
+
+      events.forEach((event) => window.addEventListener(event, resetTimer));
+      resetTimer();
+
+      return () => {
+        clearTimeout(timeoutId);
+        events.forEach((event) => window.removeEventListener(event, resetTimer));
+      };
+    }, [token, handleLogOut, navigate]);
 
   useEffect(() => {
     trackUserActivity("route", location.pathname);
@@ -196,7 +222,7 @@ function App() {
             <div style={{ minHeight: "100vh" }}>
               <FeedPage
                 polls={polls}
-                currentUserId={currentUserId ?? "demo-user"}
+                currentUserId={currentUserId ?? ""}
                 userVotes={userVotes}
               />
             </div>
@@ -209,7 +235,7 @@ function App() {
               <UserStatsPage
                 polls={polls}
                 setPolls={setPolls}
-                currentUserId={currentUserId ?? "demo-user"}
+                currentUserId={currentUserId ?? ""}
                 userVotes={userVotes}
               />
             </div>
@@ -278,7 +304,7 @@ function App() {
               <MarginalityReport
                 tests={marginalityTests}
                 responses={marginalityResponses}
-                currentUserId={currentUserId ?? "demo-user"}
+                currentUserId={currentUserId ?? ""}
                 onSubmitResponse={handleSubmitMarginalityResponse}
               />
             </div>
@@ -316,13 +342,11 @@ function UserRoleBadge({
   isMobile: boolean;
   users: User[];
 }) {
+  if (!currentUserId || currentUserId === "") return null;
+
   const currentUser = users.find((user) => user.id === currentUserId);
-
-  if (!currentUser) {
-    return null;
-  }
-
-  const roleLabel = resolveUserRoleLabel(currentUser);
+  
+  const roleLabel = currentUser ? resolveUserRoleLabel(currentUser) : "User";
   const isAdmin = roleLabel.toLowerCase() === "admin";
 
   return (
@@ -350,6 +374,10 @@ function UserRoleBadge({
 }
 
 function resolveUserRoleLabel(user: User): string {
+  if (user.username.toLowerCase() === "admin") {
+    return "Admin";
+  }
+
   const explicitRoleName =
     user.roleName ??
     (typeof user.role === "string" ? user.role : user.role?.name);

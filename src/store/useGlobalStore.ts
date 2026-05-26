@@ -9,6 +9,19 @@ import type { NewPollData } from "../components/PollCardCreate";
 import { addToOfflineQueue } from "../services/offlineQueueService";
 import { API_BASE_URL } from "../config";
 
+const USER_TOKEN_STORAGE_KEY = "goatalking_auth_token";
+
+const readPersistedToken = () => {
+  if (typeof localStorage === "undefined") return undefined;
+  return localStorage.getItem(USER_TOKEN_STORAGE_KEY) ?? undefined;
+};
+
+const persistToken = (token?: string) => {
+  if (typeof localStorage === "undefined") return;
+  if (token) localStorage.setItem(USER_TOKEN_STORAGE_KEY, token);
+  else localStorage.removeItem(USER_TOKEN_STORAGE_KEY);
+};
+
 const USER_VOTES_STORAGE_KEY = "goatalking_user_votes";
 const CURRENT_USER_STORAGE_KEY = "goatalking_current_user_id";
 
@@ -34,11 +47,10 @@ const persistUserVotes = (userVotes: UserVotes) => {
 };
 
 const readPersistedCurrentUserId = () => {
-  if (typeof localStorage === "undefined") {
-    return "demo-user";
-  }
-
-  return localStorage.getItem(CURRENT_USER_STORAGE_KEY) ?? "demo-user";
+  if (typeof localStorage === "undefined") return undefined;
+  
+  const stored = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
+  return stored && stored !== "" ? stored : undefined; 
 };
 
 const persistCurrentUserId = (currentUserId: string) => {
@@ -57,6 +69,7 @@ export type AppState = {
   marginalityResponses: MarginalityTestResponse[];
   userVotes: UserVotes;
   currentUserId?: string;
+  token?: string;
 
   setPolls: (updater: Poll[] | ((currentPolls: Poll[]) => Poll[])) => void;
   setLists: (lists: PollList[]) => void;
@@ -65,6 +78,7 @@ export type AppState = {
   setMarginalityResponses: (responses: MarginalityTestResponse[]) => void;
   setUserVotes: (votes: UserVotes) => void;
   setCurrentUserId: (id: string) => void;
+  setToken: (token?: string) => void;
 
   handleUpdatePoll: (pollId: string, updates: Partial<Poll>) => Promise<void>;
   handleDeletePoll: (pollId: string) => Promise<void>;
@@ -76,6 +90,8 @@ export type AppState = {
   handleDeleteList: (listId: string) => void;
   handleAssignPollToList: (pollId: string, listId: string | null) => void;
   handleSignUp: (userData: { username: string; email: string; password: string }) => Promise<void>;
+  handleLogIn: (userData: { email: string; password: string }) => Promise<void>;
+  handleLogOut: () => void;
 };
 
 export const useGlobalStore = create<AppState>((set, get) => ({
@@ -86,6 +102,7 @@ export const useGlobalStore = create<AppState>((set, get) => ({
   marginalityResponses: [],
   userVotes: readPersistedUserVotes(),
   currentUserId: readPersistedCurrentUserId(),
+  token: readPersistedToken(),
 
   setPolls: (updater) => set((state) => ({
     polls: typeof updater === 'function' ? updater(state.polls) : updater
@@ -102,6 +119,10 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     persistCurrentUserId(currentUserId);
     set({ currentUserId });
   },
+  setToken: (token) => {
+    persistToken(token);
+    set({ token });
+  },
 
   handleUpdatePoll: async (pollId, updates) => {
     trackUserActivity("poll", `update-poll:${pollId}`);
@@ -115,7 +136,8 @@ export const useGlobalStore = create<AppState>((set, get) => ({
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-id": get().currentUserId || "demo-user"
+          "x-user-id": get().currentUserId || "demo-user",
+          "Authorization": `Bearer ${get().token}`
         },
         body: JSON.stringify(updates),
       });
@@ -135,6 +157,9 @@ export const useGlobalStore = create<AppState>((set, get) => ({
     try {
       const response = await fetch(`${API_BASE_URL}/api/polls/${pollId}`, {
         method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${get().token}`
+        }
       });
       if (!response.ok) throw new Error("Server rejected delete");
     } catch {
@@ -144,7 +169,11 @@ export const useGlobalStore = create<AppState>((set, get) => ({
 
   handleCreatePoll: async (pollData) => {
     const state = get();
-    const ownerId = state.currentUserId ?? state.users[0]?.id ?? "demo-user";
+    const ownerId = state.currentUserId;
+    if (!ownerId) {
+      console.error("You must be logged in to create a poll!");
+      return; 
+    }
 
     let tempPoll = createPoll(
       pollData.title.trim(),
@@ -159,9 +188,6 @@ export const useGlobalStore = create<AppState>((set, get) => ({
 
     tempPoll = { ...tempPoll, ownerId, dateCreated: new Date(), listId: null };
 
-    trackUserActivity("poll", `create-poll:${tempPoll.id}`);
-    
-    // Instantly draw the fake one
     set((state) => ({ polls: [tempPoll, ...state.polls] }));
 
     try {
@@ -169,7 +195,8 @@ export const useGlobalStore = create<AppState>((set, get) => ({
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-id": get().currentUserId || "demo-user"
+          "x-user-id": ownerId,
+          "Authorization": `Bearer ${get().token}` 
         },
         body: JSON.stringify(tempPoll),
       });
@@ -177,18 +204,17 @@ export const useGlobalStore = create<AppState>((set, get) => ({
       if (!response.ok) throw new Error("Server rejected create");
 
       const realPollRaw = await response.json();
-      
-      const realPoll = {
-        ...realPollRaw,
-        dateCreated: new Date(realPollRaw.dateCreated)
-      };
+      const realPoll = { ...realPollRaw, dateCreated: new Date(realPollRaw.dateCreated) };
 
       set((state) => ({
         polls: state.polls.map(p => p.id === tempPoll.id ? realPoll : p)
       }));
 
     } catch {
-      addToOfflineQueue("/api/polls", "POST", tempPoll);
+      console.error("Server rejected the poll. Deleting the fake ghost poll from UI.");
+      set((state) => ({
+        polls: state.polls.filter(p => p.id !== tempPoll.id)
+      }));
     }
   },
 
@@ -211,7 +237,8 @@ handleVote: async (pollId, optionId, userId) => {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-id": get().currentUserId || "demo-user"
+          "x-user-id": get().currentUserId || "demo-user",
+          "Authorization": `Bearer ${get().token}`
         },
         body: JSON.stringify({ pollId, optionId, userId }),
       });
@@ -261,7 +288,8 @@ handleVote: async (pollId, optionId, userId) => {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-id": get().currentUserId || "demo-user"
+          "x-user-id": get().currentUserId || "demo-user",
+          "Authorization": `Bearer ${get().token}`
         },
         body: JSON.stringify(payload), 
       });
@@ -337,7 +365,9 @@ handleVote: async (pollId, optionId, userId) => {
   handleSignUp: async (userData) => {
     const response = await fetch(`${API_BASE_URL}/api/users`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         username: userData.username,
         email: userData.email,
@@ -351,13 +381,51 @@ handleVote: async (pollId, optionId, userId) => {
       throw new Error(errorData.error || "Signup failed");
     }
 
-    const newUser = await response.json();
+    const { user, token } = await response.json();
 
-    persistCurrentUserId(newUser.id);
+    persistCurrentUserId(user.id);
+    persistToken(token); 
     
     set((state) => ({
-      users: [...state.users, newUser],
-      currentUserId: newUser.id
+      users: [...state.users, user],
+      currentUserId: user.id,
+      token
     }));
   },
+
+  handleLogIn: async (userData) => {
+    const response = await fetch(`${API_BASE_URL}/api/users/login`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Login failed");
+    }
+
+    const { user, token } = await response.json();
+
+    persistCurrentUserId(user.id);
+    persistToken(token);
+    
+    set((state) => ({
+      users: [...state.users.filter(u => u.id !== user.id), user],
+      currentUserId: user.id,
+      token
+    }));
+  },
+
+  handleLogOut: () => {
+    persistCurrentUserId("");
+    persistToken(undefined);
+    set({ 
+      currentUserId: undefined, 
+      token: undefined,
+      userVotes: {},
+    });
+  }
 }));
