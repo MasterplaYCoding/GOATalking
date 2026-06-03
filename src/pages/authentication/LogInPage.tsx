@@ -47,6 +47,7 @@ export function LogInPage({ onSubmit, onSwitchToSignUp, onSwitchToForgotPassword
       }
     } catch {
       setServerError("Login failed. Please check your email and password.");
+      trackUserActivity("security_alert", "brute_force_failed_login");
     }
   };
 

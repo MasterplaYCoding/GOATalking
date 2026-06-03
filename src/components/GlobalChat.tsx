@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useGlobalStore } from "../store/useGlobalStore";
-import { API_BASE_URL } from "../config"; 
 
 type ChatMessage = {
   _id: string;
@@ -23,8 +22,7 @@ export function GlobalChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const wsUrl = API_BASE_URL.replace(/^http/, 'ws');
-    const socket = new WebSocket(wsUrl);
+    const socket = new WebSocket("wss://goatalking-api.onrender.com");
     wsRef.current = socket;
 
     socket.onmessage = (event) => {
